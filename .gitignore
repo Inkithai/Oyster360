@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+.venv/
+venv/
+
+# Node / Next.js
+node_modules/
+.next/
+out/
+coverage/
+*.tsbuildinfo
+
+# Local environment and tooling
+.env
+.env.local
+.env.*.local
+.vscode/
+.idea/
+.DS_Store
+
+# Logs
+*.log
+
+# Environment files must stay local; use .env.example as the template.
+.env.production
+.env.*.production
+backend/.env.production
+frontend/.env.production
