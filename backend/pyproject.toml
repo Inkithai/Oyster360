@@ -1,0 +1,53 @@
+# PEP 621 project manifest for the Oyster360 backend. Direct runtime deps are
+# pinned here and in requirements-runtime.txt; the fully resolved, reproducible
+# transitive set is locked in requirements.lock (consumed by CI and Docker).
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "oyster360-backend"
+version = "1.0.0"
+description = "Oyster360 — multi-tenant mushroom farm management SaaS (FastAPI backend)."
+readme = "../README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi==0.141.1",
+    "starlette>=1.0.1",
+    "uvicorn[standard]==0.52.4",
+    "sqlalchemy==2.0.41",
+    "pydantic[email]==2.13.4",
+    "pydantic-settings==2.15.0",
+    "PyJWT==2.13.0",
+    "argon2-cffi==25.1.0",
+    "alembic==1.19.1",
+    "psycopg[binary]==3.3.4",
+    "python-multipart==0.0.32",
+    "celery==5.6.3",
+    "redis==8.1.0",
+    "stripe==15.5.0",
+    "pyotp==2.10.0",
+    "qrcode[pil]==8.2",
+    "requests==2.34.2",
+    "sentry-sdk==2.68.0",
+    "python-json-logger==2.0.7",
+]
+
+[project.optional-dependencies]
+dev = [
+    "flake8==7.3.0",
+    "httpx==0.28.1",
+    "pytest==9.1.1",
+    "pytest-cov==7.1.0",
+]
+
+[tool.setuptools.packages.find]
+include = ["app*"]
+
+[tool.coverage.run]
+branch = true
+source = ["app"]
+
+[tool.coverage.report]
+fail_under = 60
+show_missing = true
