@@ -8,8 +8,9 @@ from app.services.analytics_service import AnalyticsService
 from typing import Dict, Any
 
 class AssistantService:
-    def __init__(self, db: Session):
+    def __init__(self, db: Session, organization_id: int):
         self.db = db
+        self.organization_id = organization_id
         self.rag = RAGService(db)
         self.analytics = AnalyticsService(db)
 
@@ -22,16 +23,16 @@ class AssistantService:
 
         # Tool: Get batch-specific data
         if batch_id:
-            batch_data = self.analytics.get_dashboard_stats()  # Can be expanded
+            batch_data = self.analytics.get_dashboard_stats(self.organization_id)  # Can be expanded
             farm_context += f"\nCurrent Batch #{batch_id} context: {batch_data}"
 
         # Tool: Get analytics if relevant
         if any(word in question.lower() for word in ["yield", "production", "success"]):
-            stats = self.analytics.get_dashboard_stats()
+            stats = self.analytics.get_dashboard_stats(self.organization_id)
             farm_context += f"\nFarm Statistics: {stats}"
 
         # Build RAG context
-        prompt = self.rag.build_context(question, farm_context)
+        prompt = self.rag.build_context(question, user_id or 0, farm_context)
 
         # Simulated LLM response (replace with real LLM call later)
         if "slow" in question.lower() and batch_id:

@@ -14,6 +14,7 @@ class Supplier(Base):
     __table_args__ = {'extend_existing': True}
 
     id = Column(Integer, primary_key=True, index=True)
+    organization_id = Column(Integer, ForeignKey("organizations.id"), nullable=False, index=True)
     name = Column(String, nullable=False)
     contact_person = Column(String)
     phone = Column(String)

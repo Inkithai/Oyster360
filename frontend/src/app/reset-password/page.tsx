@@ -1,17 +1,18 @@
 'use client'
 
-import { useState } from 'react'
+import { Suspense, useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
 import { apiRequest } from '@/lib/api'
 import { useToast } from '@/components/ui/use-toast'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
-import { useSearchParams } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 
-export default function ResetPasswordPage() {
+function ResetPasswordForm() {
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const { toast } = useToast()
+  const router = useRouter()
   const searchParams = useSearchParams()
   const token = searchParams.get('token')
 
@@ -29,7 +30,7 @@ export default function ResetPasswordPage() {
       })
       // Redirect to login after 2 seconds
       setTimeout(() => {
-        window.location.href = '/login'
+        router.push('/login')
       }, 2000)
     },
     onError: () => {
@@ -106,7 +107,7 @@ export default function ResetPasswordPage() {
                 className="mt-1 w-full rounded-lg border px-4 py-3"
                 placeholder="••••••••"
                 required
-                minLength={6}
+                minLength={8}
               />
             </div>
 
@@ -119,7 +120,7 @@ export default function ResetPasswordPage() {
                 className="mt-1 w-full rounded-lg border px-4 py-3"
                 placeholder="••••••••"
                 required
-                minLength={6}
+                minLength={8}
               />
             </div>
 
@@ -141,5 +142,13 @@ export default function ResetPasswordPage() {
         </p>
       </div>
     </div>
+  )
+}
+
+export default function ResetPasswordPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-muted/30" />}>
+      <ResetPasswordForm />
+    </Suspense>
   )
 }

@@ -7,7 +7,7 @@ import sys
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
-from app.models.base import Base
+from app.models import Base  # Imports every model so autogenerate sees all tables.
 from app.core.config import settings
 
 config = context.config

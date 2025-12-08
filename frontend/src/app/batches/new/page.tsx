@@ -101,7 +101,7 @@ export default function NewBatchPage() {
           <select {...register('recipe_version_id', { valueAsNumber: true })} className="mt-1 w-full rounded-lg border px-4 py-3">
             <option value="">Select recipe</option>
             {recipes.map((r: any) => (
-              <option key={r.id} value={r.id}>{r.name}</option>
+              <option key={r.id} value={r.latest_version_id}>{r.name}</option>
             ))}
           </select>
           {errors.recipe_version_id && <p className="text-sm text-destructive mt-1">{errors.recipe_version_id.message}</p>}

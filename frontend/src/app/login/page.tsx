@@ -30,6 +30,7 @@ export default function LoginPage() {
     }),
     onSuccess: (data) => {
       localStorage.setItem('token', data.access_token)
+      localStorage.setItem('refresh_token', data.refresh_token)
       toast({ title: 'Login successful', variant: 'success' })
       router.push('/dashboard')
     },
@@ -52,8 +53,9 @@ export default function LoginPage() {
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div>
-            <label className="text-sm font-medium">Email</label>
+            <label htmlFor="email" className="text-sm font-medium">Email</label>
             <input
+              id="email"
               {...register('email')}
               type="email"
               className="mt-1 w-full rounded-lg border px-4 py-3"
@@ -63,8 +65,9 @@ export default function LoginPage() {
           </div>
 
           <div>
-            <label className="text-sm font-medium">Password</label>
+            <label htmlFor="password" className="text-sm font-medium">Password</label>
             <input
+              id="password"
               {...register('password')}
               type="password"
               className="mt-1 w-full rounded-lg border px-4 py-3"

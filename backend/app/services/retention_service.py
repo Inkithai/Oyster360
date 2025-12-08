@@ -3,7 +3,7 @@ Oyster360 Data Retention Service
 Manages data retention policies
 """
 from sqlalchemy.orm import Session
-from app.models.audit_log import AuditLog
+from app.models.admin import AuditLog
 from datetime import datetime, timedelta
 
 class RetentionService:
