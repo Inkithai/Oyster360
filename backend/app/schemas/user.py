@@ -1,6 +1,4 @@
 from enum import Enum
-from typing import Optional
-
 from pydantic import BaseModel, EmailStr, Field, field_validator
 
 
@@ -25,7 +23,7 @@ class UserCreate(BaseModel):
     name: str = Field(min_length=2, max_length=255)
     email: EmailStr
     password: str = Field(min_length=8, max_length=128)
-    farm_name: Optional[str] = Field(default=None, min_length=2, max_length=255)
+    farm_name: str = Field(min_length=2, max_length=255)
 
     @field_validator("email")
     @classmethod
