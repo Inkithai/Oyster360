@@ -18,7 +18,7 @@ export default function AIAssistantPage() {
         body: JSON.stringify({ question }),
       })
       setAnswer(res.answer)
-    } catch (error) {
+    } catch {
       setAnswer("Sorry, the AI assistant is currently unavailable.")
     } finally {
       setLoading(false)

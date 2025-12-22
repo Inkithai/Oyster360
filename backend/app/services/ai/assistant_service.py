@@ -22,12 +22,16 @@ class AssistantService:
 
         # Gather farm context
         if batch_id:
-            batch = self.db.query(Batch).filter(Batch.id == batch_id).first()
+            batch = self.db.query(Batch).filter(
+                Batch.id == batch_id,
+                Batch.organization_id == self.organization_id,
+            ).first()
             if batch:
                 farm_data += f"\nBatch #{batch.batch_number} is currently in {batch.current_stage} stage."
 
                 env_logs = self.db.query(EnvironmentLog).filter(
-                    EnvironmentLog.room_id == batch.room_id
+                    EnvironmentLog.room_id == batch.room_id,
+                    EnvironmentLog.organization_id == self.organization_id,
                 ).order_by(EnvironmentLog.recorded_at.desc()).limit(5).all()
 
                 if env_logs:
@@ -36,7 +40,8 @@ class AssistantService:
                     farm_data += f"\nRecent environment: Temperature {avg_temp:.1f}°C, Humidity {avg_humidity:.1f}%"
 
                 growth_logs = self.db.query(GrowthLog).filter(
-                    GrowthLog.batch_id == batch_id
+                    GrowthLog.batch_id == batch_id,
+                    GrowthLog.organization_id == self.organization_id,
                 ).order_by(GrowthLog.created_at.desc()).limit(3).all()
 
                 if growth_logs:
@@ -105,11 +110,3 @@ class AssistantService:
             return "Contamination rate this month is 8.2%. Most common issues: Green mold (62%) and bacterial contamination (28%). Recommendation: Improve fresh air exchange and maintain humidity below 92%."
         
         return "Thank you for your question. I've analyzed your farm data and batch history. The most relevant recommendation is to maintain consistent environmental conditions and monitor growth closely over the next 3-5 days."
-
-    def _call_openai(self, question: str, context: str) -> str:
-        # Production-ready placeholder for OpenAI integration
-        return f"[OpenAI] {self._rule_based_response(question, None, context)}"
-
-    def _call_gemini(self, question: str, context: str) -> str:
-        # Production-ready placeholder for Gemini integration
-        return f"[Gemini] {self._rule_based_response(question, None, context)}"

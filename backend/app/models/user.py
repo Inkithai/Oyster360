@@ -21,6 +21,11 @@ class User(Base):
     email_verified = Column(Boolean, default=False)
     email_verification_token = Column(String, nullable=True)
     email_verification_expires = Column(DateTime, nullable=True)
+
+    # Password reset tokens are separate from email verification tokens so the
+    # two flows cannot invalidate or accidentally satisfy one another.
+    password_reset_token = Column(String, nullable=True, index=True)
+    password_reset_expires = Column(DateTime, nullable=True)
     
     # Profile
     avatar_url = Column(String, nullable=True)

@@ -15,5 +15,8 @@ def apply_tenant_filter(query: Query, model, organization_id: int):
     return query
 
 def get_organization_id_from_request(request: Request) -> int:
-    """Extract organization_id from request state (set by middleware)"""
-    return getattr(request.state, 'organization_id', None) or 1  # Default to 1 for demo
+    """Extract the organization ID set by the tenant middleware."""
+    organization_id = getattr(request.state, "organization_id", None)
+    if organization_id is None:
+        raise ValueError("No active organization is available for this request")
+    return organization_id

@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
-import { ArrowRight, CheckCircle, Zap, Users, BarChart3 } from 'lucide-react'
+import { ArrowRight, Zap, Users, BarChart3 } from 'lucide-react'
 
 export default function LandingPage() {
   return (

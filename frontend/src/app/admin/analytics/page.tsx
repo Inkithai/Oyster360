@@ -15,11 +15,6 @@ export default function AdminAnalytics() {
     queryFn: () => apiRequest('/api/saas-analytics/revenue'),
   })
 
-  const { data: usage } = useQuery({
-    queryKey: ['saas-usage'],
-    queryFn: () => apiRequest('/api/saas-analytics/usage'),
-  })
-
   const { data: retention } = useQuery({
     queryKey: ['saas-retention'],
     queryFn: () => apiRequest('/api/saas-analytics/retention'),

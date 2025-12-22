@@ -1,25 +1,36 @@
-"""
-Tenant Enforcement Integration Tests
-"""
-import pytest
-from fastapi.testclient import TestClient
-from app.main import app
-from app.core.security import create_access_token
-from app.models.user import User
-from app.models.organization import Organization, OrganizationMember
+"""Tenant enforcement integration tests."""
+
 from app.models.batch import Batch
-from datetime import datetime
 
-client = TestClient(app)
 
-def test_batch_creation_assigns_organization(db_session, auth_test_user):
-    """Verify batch creation automatically assigns organization"""
-    # This would require the TenantEnforcer to be integrated into create_batch
-    pass
+def test_batch_creation_assigns_organization(client, db_session, tenant_test_data):
+    data = tenant_test_data
+    response = client.post(
+        "/api/batches",
+        json={
+            "batch_number": "TENANT-A-NEW",
+            "room_id": 1,
+            "strain_id": 1,
+            "recipe_version_id": 1,
+        },
+        headers={"Authorization": f"Bearer {data['token_a']}"},
+    )
 
-def test_batch_query_filters_by_organization():
-    """Verify batch queries are filtered by organization"""
-    # Implementation would test that get_user_batches only returns org-specific batches
-    pass
+    assert response.status_code == 200
+    batch = db_session.query(Batch).filter(
+        Batch.id == response.json()["id"]
+    ).one()
+    assert batch.organization_id == data["org_a"]
 
-print("✅ Tenant enforcement test structure created")
+
+def test_batch_query_filters_by_organization(client, tenant_test_data):
+    data = tenant_test_data
+    response = client.get(
+        "/api/batches",
+        headers={"Authorization": f"Bearer {data['token_a']}"},
+    )
+
+    assert response.status_code == 200
+    returned_ids = {batch["id"] for batch in response.json()}
+    assert data["batch_a"] in returned_ids
+    assert data["batch_b"] not in returned_ids

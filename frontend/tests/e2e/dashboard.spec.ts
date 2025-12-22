@@ -1,22 +1,19 @@
-import { test, expect } from '@playwright/test';
+import { expect, test } from '@playwright/test'
 
 test('dashboard loads correctly', async ({ page }) => {
-  await page.goto('http://localhost:3000/dashboard');
-  
-  // Check if dashboard elements exist
-  await expect(page.locator('h1')).toContainText('Dashboard');
-  await expect(page.locator('text=Active Batches')).toBeVisible();
-  await expect(page.locator('text=Expected Harvest')).toBeVisible();
-});
+  await page.goto('/dashboard')
+
+  await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible()
+  await expect(page.getByText('Active Batches', { exact: true })).toBeVisible()
+  await expect(page.getByText('Expected Harvest', { exact: true })).toBeVisible()
+})
 
 test('navigation works', async ({ page }) => {
-  await page.goto('http://localhost:3000/dashboard');
-  
-  // Navigate to batches
-  await page.click('text=Batches');
-  await expect(page).toHaveURL(/batches/);
-  
-  // Navigate to analytics
-  await page.click('text=Analytics');
-  await expect(page).toHaveURL(/analytics/);
-});
+  await page.goto('/dashboard')
+
+  await page.getByRole('link', { name: 'Batches' }).click()
+  await expect(page).toHaveURL(/\/batches$/)
+
+  await page.getByRole('link', { name: 'Analytics' }).click()
+  await expect(page).toHaveURL(/\/analytics$/)
+})
