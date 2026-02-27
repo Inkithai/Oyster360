@@ -16,6 +16,55 @@ from app.models.room import Room
 from app.models.inventory import InventoryItem
 from app.core.security import get_password_hash, create_access_token
 from datetime import datetime
+from types import SimpleNamespace
+
+
+@pytest.fixture(autouse=True)
+def block_external_services(monkeypatch):
+    """Keep every test deterministic and prevent accidental billable API calls."""
+    import requests
+    import stripe
+
+    def unexpected_network(*args, **kwargs):
+        raise AssertionError("External HTTP calls are disabled in tests")
+
+    monkeypatch.setattr(requests, "post", unexpected_network)
+    monkeypatch.setattr(
+        stripe.Customer,
+        "create",
+        lambda **kwargs: SimpleNamespace(id="cus_test", **kwargs),
+    )
+    monkeypatch.setattr(
+        stripe.checkout.Session,
+        "create",
+        lambda **kwargs: SimpleNamespace(id="cs_test", url="https://stripe.test/checkout"),
+    )
+    monkeypatch.setattr(
+        stripe.billing_portal.Session,
+        "create",
+        lambda **kwargs: SimpleNamespace(url="https://stripe.test/portal"),
+    )
+    monkeypatch.setattr(
+        stripe.Price,
+        "create",
+        lambda **kwargs: SimpleNamespace(id="price_test", **kwargs),
+    )
+    monkeypatch.setattr(
+        stripe.Webhook,
+        "construct_event",
+        lambda payload, signature, secret: {"type": "test.event", "data": {"object": {}}},
+    )
+    monkeypatch.setattr(
+        stripe.Subscription,
+        "retrieve",
+        lambda subscription_id: SimpleNamespace(id=subscription_id, status="active"),
+    )
+    monkeypatch.setattr(
+        stripe.Subscription,
+        "modify",
+        lambda subscription_id, **kwargs: SimpleNamespace(id=subscription_id, **kwargs),
+    )
+
 
 # Use SQLite in-memory database for tests
 TEST_DATABASE_URL = "sqlite:///:memory:"

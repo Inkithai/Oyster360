@@ -36,14 +36,13 @@ export function DataTable<T extends Record<string, any>>({
   const [currentPage, setCurrentPage] = useState(1)
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: "asc" | "desc" } | null>(null)
 
-  // Filtering
-  const filteredData = data.filter((item) =>
+  // Derive filtered and sorted rows without mutating caller-owned data.
+  const filteredData = React.useMemo(() => data.filter((item) =>
     Object.values(item).some((value) =>
       String(value).toLowerCase().includes(searchTerm.toLowerCase())
     )
-  )
+  ), [data, searchTerm])
 
-  // Sorting
   const sortedData = React.useMemo(() => {
     if (!sortConfig) return filteredData
 
@@ -74,13 +73,14 @@ export function DataTable<T extends Record<string, any>>({
   }
 
   const exportToCSV = () => {
-    const headers = columns.map((col) => col.label).join(",")
+    const escapeCell = (value: unknown) => `"${String(value ?? "").replace(/"/g, '""')}"`
+    const headers = columns.map((col) => escapeCell(col.label)).join(",")
     const rows = sortedData
       .map((item) =>
         columns
           .map((col) => {
             const value = item[col.key as keyof T]
-            return `"${String(value).replace(/"/g, '""')}"`
+            return escapeCell(value)
           })
           .join(",")
       )
@@ -93,6 +93,7 @@ export function DataTable<T extends Record<string, any>>({
     a.href = url
     a.download = "export.csv"
     a.click()
+    window.URL.revokeObjectURL(url)
   }
 
   return (
@@ -124,15 +125,22 @@ export function DataTable<T extends Record<string, any>>({
               {columns.map((column, index) => (
                 <TableHead
                   key={index}
-                  onClick={() => handleSort(String(column.key))}
-                  className="cursor-pointer hover:bg-muted"
+                  aria-sort={sortConfig?.key === column.key
+                    ? (sortConfig.direction === "asc" ? "ascending" : "descending")
+                    : "none"}
                 >
-                  {column.label}
-                  {sortConfig?.key === column.key && (
-                    <span className="ml-1">
-                      {sortConfig.direction === "asc" ? "↑" : "↓"}
-                    </span>
-                  )}
+                  <button
+                    type="button"
+                    onClick={() => handleSort(String(column.key))}
+                    className="w-full cursor-pointer text-left hover:text-foreground"
+                  >
+                    {column.label}
+                    {sortConfig?.key === column.key && (
+                      <span className="ml-1" aria-hidden="true">
+                        {sortConfig.direction === "asc" ? "↑" : "↓"}
+                      </span>
+                    )}
+                  </button>
                 </TableHead>
               ))}
             </TableRow>
@@ -172,6 +180,7 @@ export function DataTable<T extends Record<string, any>>({
               size="sm"
               onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
               disabled={currentPage === 1}
+              aria-label="Previous page"
             >
               <ChevronLeft className="h-4 w-4" />
             </Button>
@@ -180,6 +189,7 @@ export function DataTable<T extends Record<string, any>>({
               size="sm"
               onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
               disabled={currentPage === totalPages}
+              aria-label="Next page"
             >
               <ChevronRight className="h-4 w-4" />
             </Button>
