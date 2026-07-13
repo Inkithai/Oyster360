@@ -1,0 +1,17 @@
+# Repository-wide editor/lint defaults. Backend-specific rules live in
+# backend/.flake8 and backend/setup.cfg; these mirror them at the root so that
+# linters and IDEs launched from the repository root pick up the same policy
+# the CI pipeline enforces (see .github/workflows/ci.yml -> "Lint backend").
+[flake8]
+# Fail on syntax errors, undefined names, and redefinitions — the same set CI
+# checks with: flake8 app tests --select=E9,F63,F7,F82
+select = E9,F63,F7,F82
+max-line-length = 100
+show-source = true
+count = true
+exclude =
+    .git,
+    .venv,
+    __pycache__,
+    node_modules,
+    alembic/versions

@@ -1,0 +1,10 @@
+# Development / CI-only dependencies. Install everything needed for local
+# development and tests with:
+#     pip install -r requirements.txt -r requirements-dev.txt
+# Runtime dependencies live in requirements-runtime.txt and the fully resolved,
+# reproducible set (including transitives) is pinned in requirements.lock.
+-r requirements-runtime.txt
+flake8==7.3.0
+httpx==0.28.1
+pytest==9.1.1
+pytest-cov==7.1.0
