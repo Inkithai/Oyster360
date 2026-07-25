@@ -4,6 +4,8 @@ from app.main import app
 from app.core.security import get_password_hash, create_access_token
 from app.models.user import User
 from app.models.refresh_token import RefreshToken
+from app.models.organization import Organization, OrganizationMember
+from app.models.farm import Farm
 from datetime import datetime, timedelta
 
 client = TestClient(app)
@@ -21,6 +23,34 @@ def auth_test_user(db_session):
     db_session.commit()
     db_session.refresh(user)
     return user
+
+def test_registration_creates_tenant_without_role_escalation(client, db_session):
+    response = client.post("/api/auth/register", json={
+        "name": "New Owner",
+        "email": "owner@example.com",
+        "password": "secure-password-123",
+        "farm_name": "Sunrise Mushrooms",
+        "role": "ADMIN",
+    })
+
+    assert response.status_code == 200
+    assert response.json()["role"] == "FARM_MANAGER"
+
+    user = db_session.query(User).filter(User.email == "owner@example.com").one()
+    organization = db_session.query(Organization).filter(
+        Organization.id == user.current_organization_id
+    ).one()
+    assert organization.name == "Sunrise Mushrooms"
+    assert db_session.query(OrganizationMember).filter_by(
+        organization_id=organization.id,
+        user_id=user.id,
+        role="OWNER",
+    ).count() == 1
+    assert db_session.query(Farm).filter_by(
+        organization_id=organization.id,
+        owner_id=user.id,
+    ).count() == 1
+
 
 def test_user_login_success(client, auth_test_user):
     """Test successful login"""
