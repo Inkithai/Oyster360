@@ -1,6 +1,6 @@
 'use client'
 
-import { ReactNode } from 'react'
+import { ReactNode, useSyncExternalStore } from 'react'
 
 type UserRole = 'ADMIN' | 'FARM_MANAGER' | 'WORKER' | 'VIEWER'
 
@@ -10,18 +10,49 @@ interface RoleGuardProps {
   fallback?: ReactNode
 }
 
+const USER_ROLES = new Set<UserRole>([
+  'ADMIN',
+  'FARM_MANAGER',
+  'WORKER',
+  'VIEWER',
+])
+
+function roleFromAccessToken(token: string | null): UserRole | null {
+  if (!token) return null
+
+  try {
+    const encodedPayload = token.split('.')[1]
+    if (!encodedPayload) return null
+    const base64 = encodedPayload.replace(/-/g, '+').replace(/_/g, '/')
+    const payload = JSON.parse(atob(base64)) as { role?: string }
+    return payload.role && USER_ROLES.has(payload.role as UserRole)
+      ? payload.role as UserRole
+      : null
+  } catch {
+    return null
+  }
+}
+
+function subscribeToTokenChanges(onStoreChange: () => void) {
+  window.addEventListener('storage', onStoreChange)
+  return () => window.removeEventListener('storage', onStoreChange)
+}
+
+function getTokenSnapshot() {
+  return localStorage.getItem('token') || ''
+}
+
 export function RoleGuard({ allowedRoles, children, fallback = null }: RoleGuardProps) {
-  // In production, get role from JWT token or user context
-  const userRole: UserRole = 'ADMIN' // TODO: Get from auth context
-  
-  if (allowedRoles.includes(userRole)) {
+  const token = useSyncExternalStore(subscribeToTokenChanges, getTokenSnapshot, () => '')
+  const userRole = roleFromAccessToken(token)
+
+  if (userRole && allowedRoles.includes(userRole)) {
     return <>{children}</>
   }
-  
+
   return <>{fallback}</>
 }
 
-// Role-specific components
 export const AdminOnly = ({ children }: { children: ReactNode }) => (
   <RoleGuard allowedRoles={['ADMIN']}>{children}</RoleGuard>
 )

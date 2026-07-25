@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from app.database.database import get_db
 from app.services.admin_service import AdminService
 from app.core.dependencies import admin_only
+from app.models.admin import FeatureFlag
 from app.models.user import User
 
 router = APIRouter()

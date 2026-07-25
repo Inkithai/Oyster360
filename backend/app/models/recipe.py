@@ -11,7 +11,16 @@ class Recipe(Base):
     farm_id = Column(Integer, ForeignKey("farms.id"))
     organization_id = Column(Integer, ForeignKey("organizations.id"), nullable=True)
 
-    versions = relationship("RecipeVersion", back_populates="recipe")
+    versions = relationship(
+        "RecipeVersion",
+        back_populates="recipe",
+        order_by="RecipeVersion.version",
+    )
+
+    @property
+    def latest_version_id(self):
+        return self.versions[-1].id if self.versions else None
+
 
 class RecipeVersion(Base):
     __tablename__ = "recipe_versions"

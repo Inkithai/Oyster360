@@ -32,9 +32,17 @@ class RAGService:
             self.db.add(chunk_obj)
         self.db.commit()
 
-    def retrieve_relevant_chunks(self, query: str, top_k: int = 5) -> List[str]:
-        """Simple keyword-based retrieval (replace with vector search later)"""
-        documents = self.db.query(DocumentChunk).all()
+    def retrieve_relevant_chunks(
+        self,
+        query: str,
+        user_id: int,
+        top_k: int = 5,
+    ) -> List[str]:
+        """Retrieve chunks only from documents uploaded by the current user."""
+        documents = self.db.query(DocumentChunk).join(
+            KnowledgeDocument,
+            KnowledgeDocument.id == DocumentChunk.document_id,
+        ).filter(KnowledgeDocument.uploaded_by == user_id).all()
         scored_chunks = []
 
         query_words = set(query.lower().split())
@@ -48,9 +56,9 @@ class RAGService:
         scored_chunks.sort(reverse=True)
         return [chunk for _, chunk in scored_chunks[:top_k]]
 
-    def build_context(self, query: str, farm_data: str = "") -> str:
+    def build_context(self, query: str, user_id: int, farm_data: str = "") -> str:
         """Build prompt context from documents + farm data"""
-        chunks = self.retrieve_relevant_chunks(query)
+        chunks = self.retrieve_relevant_chunks(query, user_id)
         context = "\n\n".join(chunks)
         
         prompt = f"""You are Oyster360, an expert AI Farm Copilot for commercial oyster mushroom cultivation.

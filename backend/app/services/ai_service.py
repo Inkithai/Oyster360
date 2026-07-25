@@ -10,12 +10,19 @@ from datetime import datetime, timedelta
 import random
 
 class AIService:
-    def __init__(self, db: Session):
+    def __init__(self, db: Session, organization_id: int):
         self.db = db
+        self.organization_id = organization_id
+
+    def _get_batch(self, batch_id: int):
+        return self.db.query(Batch).filter(
+            Batch.id == batch_id,
+            Batch.organization_id == self.organization_id,
+        ).first()
 
     # ==================== YIELD PREDICTION ====================
     def predict_yield(self, batch_id: int) -> dict:
-        batch = self.db.query(Batch).filter(Batch.id == batch_id).first()
+        batch = self._get_batch(batch_id)
         if not batch:
             return {"error": "Batch not found"}
 
@@ -48,6 +55,9 @@ class AIService:
 
     # ==================== IMAGE ANALYSIS (Mock Vision) ====================
     def analyze_image(self, batch_id: int, image_url: str) -> dict:
+        if not self._get_batch(batch_id):
+            return {"error": "Batch not found"}
+
         # In production, this would call a vision model (GPT-4o / Claude 3.5 / custom model)
         analysis = ImageAnalysis(
             batch_id=batch_id,
@@ -74,7 +84,10 @@ class AIService:
         }
 
     # ==================== RAG CULTIVATION ASSISTANT (Basic) ====================
-    def ask_cultivation_question(self, question: str, batch_id: int | None = None) -> str:
+    def ask_cultivation_question(self, question: str, batch_id: int | None = None) -> str | None:
+        if batch_id is not None and not self._get_batch(batch_id):
+            return None
+
         # This is a simplified version. Real implementation would use:
         # - pgvector embeddings
         # - Document retrieval

@@ -6,8 +6,10 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
-    "test": "vitest"
+    "lint": "eslint . --max-warnings=0",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@hookform/resolvers": "5.0.1",
@@ -20,10 +22,11 @@
     "clsx": "2.1.1",
     "date-fns": "4.1.0",
     "lucide-react": "0.525.0",
-    "next": "15.3.3",
-    "react": "18.3.1",
+    "next": "^16.3.0",
+    "postcss": "^8.5.26",
+    "react": "^19.2.8",
     "react-chartjs-2": "^5.3.0",
-    "react-dom": "18.3.1",
+    "react-dom": "^19.2.8",
     "react-hook-form": "7.58.1",
     "tailwind-merge": "2.6.0",
     "zod": "3.25.76",
@@ -35,16 +38,15 @@
     "@testing-library/jest-dom": "6.6.4",
     "@testing-library/react": "16.3.0",
     "@types/node": "^20",
-    "@types/react": "^18",
-    "@types/react-dom": "^18",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.4",
+    "@vitest/coverage-v8": "^3.2.7",
     "autoprefixer": "10.4.21",
-    "tailwindcss": "4.1.11",
+    "eslint": "^9.39.5",
+    "eslint-config-next": "^16.3.0",
+    "jsdom": "^26.1.0",
+    "tailwindcss": "^4.3.2",
     "typescript": "5.8.3",
-    "vitest": "3.2.4"
-  },
-  "overrides": {
-    "react": "18.3.1",
-    "react-dom": "18.3.1",
-    "postcss": "8.5.10"
+    "vitest": "^3.2.7"
   }
 }

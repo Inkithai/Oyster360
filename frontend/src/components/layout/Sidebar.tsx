@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { 
   LayoutDashboard, 
   Leaf, 
@@ -15,6 +15,7 @@ import {
   Camera,
   LogOut
 } from 'lucide-react'
+import { apiRequest } from '@/lib/api'
 import { cn } from '@/lib/utils'
 
 export const navItems = [
@@ -32,6 +33,7 @@ export const navItems = [
 
 export function Sidebar() {
   const pathname = usePathname()
+  const router = useRouter()
 
   return (
     <div className="hidden md:flex w-64 flex-col border-r bg-muted/30 min-h-screen">
@@ -72,9 +74,14 @@ export function Sidebar() {
 
       <div className="p-4 border-t mt-auto space-y-2">
         <button
-          onClick={() => {
-            localStorage.removeItem('token')
-            window.location.href = '/login'
+          onClick={async () => {
+            try {
+              await apiRequest('/api/auth/logout', { method: 'POST' })
+            } finally {
+              localStorage.removeItem('token')
+              localStorage.removeItem('refresh_token')
+              router.push('/login')
+            }
           }}
           className="w-full flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium text-red-600 hover:bg-red-50 transition-colors"
         >

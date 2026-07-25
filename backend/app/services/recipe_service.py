@@ -4,7 +4,7 @@ from app.schemas.recipe import RecipeCreate, RecipeVersionCreate
 from app.core.tenant_enforcer import TenantEnforcer
 from typing import List
 
-def create_recipe(db: Session, farm_id: int, recipe_in: RecipeCreate, organization_id: int) -> Recipe:
+def create_recipe(db: Session, farm_id: int | None, recipe_in: RecipeCreate, organization_id: int) -> Recipe:
     enforcer = TenantEnforcer(db, organization_id)
     recipe = enforcer.safe_create(
         Recipe,

@@ -23,8 +23,9 @@ class RecipeResponse(BaseModel):
     id: int
     name: str
     description: Optional[str]
-    class Config:
-        from_attributes = True
+    latest_version_id: Optional[int] = None
+
+    model_config = {"from_attributes": True}
 
 class RecipeVersionResponse(BaseModel):
     id: int
@@ -33,5 +34,5 @@ class RecipeVersionResponse(BaseModel):
     hydration_percentage: float
     spawn_ratio: float
     notes: Optional[str]
-    class Config:
-        from_attributes = True
+
+    model_config = {"from_attributes": True}

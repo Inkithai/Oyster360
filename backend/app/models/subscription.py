@@ -15,7 +15,9 @@ class Subscription(Base):
     current_period_end = Column(DateTime)
     trial_end = Column(DateTime, nullable=True)
     cancel_at_period_end = Column(Boolean, default=False)
-    metadata = Column(JSON)
+    # ``metadata`` is reserved by SQLAlchemy's declarative API. Keep the
+    # database column name for compatibility while using a safe Python name.
+    subscription_metadata = Column("metadata", JSON)
     created_at = Column(DateTime)
     updated_at = Column(DateTime)
 

@@ -44,14 +44,15 @@ export default function SubscriptionPage() {
   })
 
   const createCheckout = useMutation({
-    mutationFn: (priceId: string) => apiRequest('/api/billing/create-checkout-session', {
-      method: 'POST',
-      body: JSON.stringify({
-        price_id: priceId,
-        success_url: `${window.location.origin}/settings/subscription?success=true`,
-        cancel_url: `${window.location.origin}/settings/subscription?canceled=true`
-      })
-    }),
+    mutationFn: (plan: string) =>
+      apiRequest('/api/billing/create-checkout-session', {
+        method: 'POST',
+        body: JSON.stringify({
+          plan,
+          success_url: `${window.location.origin}/settings/subscription?success=true`,
+          cancel_url: `${window.location.origin}/settings/subscription?canceled=true`
+        })
+      }),
     onSuccess: (data) => {
       // Redirect to Stripe Checkout
       window.location.href = data.checkout_url
@@ -71,9 +72,8 @@ export default function SubscriptionPage() {
   })
 
   const handleUpgrade = (planId: string) => {
-    // In production, map plan IDs to Stripe Price IDs
-    const priceId = `price_${planId}`
-    createCheckout.mutate(priceId)
+    setSelectedPlan(planId)
+    createCheckout.mutate(planId)
   }
 
   return (
