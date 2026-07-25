@@ -1,26 +1,32 @@
-"""
-Multi-Tenant Support for Oyster360
-"""
-from fastapi import Depends, HTTPException
-from sqlalchemy.orm import Session
-from app.database.database import get_db
-from app.models.user import User
-from app.core.dependencies import get_current_user
+"""Dependencies for resolving and enforcing the active organization."""
 
-def get_current_organization(
-    current_user: User = Depends(get_current_user)
-) -> int:
+from fastapi import Depends, HTTPException, status
+
+from app.core.dependencies import get_current_user
+from app.models.user import User
+
+
+def get_current_organization(current_user: User = Depends(get_current_user)) -> int:
+    """Return the authenticated user's active organization.
+
+    Tenant-scoped routes must never silently fall back to a shared organization,
+    because doing so can expose another tenant's records.
     """
-    In production, this would extract organization from JWT or user settings.
-    For now, returns a default organization for demo purposes.
-    """
-    # TODO: Implement real multi-tenant logic
-    return 1  # Default organization for demo
+    if current_user.current_organization_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="An active organization is required",
+        )
+    return current_user.current_organization_id
+
 
 def require_organization_access(
     organization_id: int,
-    current_org: int = Depends(get_current_organization)
-):
+    current_org: int = Depends(get_current_organization),
+) -> int:
     if organization_id != current_org:
-        raise HTTPException(status_code=403, detail="Access denied to this organization")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied to this organization",
+        )
     return organization_id

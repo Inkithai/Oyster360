@@ -4,7 +4,8 @@ import { Sidebar } from '../layout/Sidebar'
 
 // Mock Next.js router
 vi.mock('next/navigation', () => ({
-  usePathname: () => '/dashboard'
+  usePathname: () => '/dashboard',
+  useRouter: () => ({ push: vi.fn() }),
 }))
 
 describe('Sidebar', () => {

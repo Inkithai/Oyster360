@@ -1,39 +1,32 @@
-from fastapi import Request, HTTPException
+import jwt
 from starlette.middleware.base import BaseHTTPMiddleware
-from app.core.dependencies import get_current_user
-from app.database.database import SessionLocal
+from starlette.requests import Request
+
+from app.core.config import settings
+
 
 class TenantMiddleware(BaseHTTPMiddleware):
+    """Expose the signed organization claim to request-aware services.
+
+    Route dependencies still load the user and enforce the current organization;
+    the middleware intentionally performs no database I/O.
+    """
+
     async def dispatch(self, request: Request, call_next):
-        # Skip auth endpoints
-        if request.url.path.startswith("/api/auth"):
-            return await call_next(request)
-        
-        try:
-            # Get user from token
-            auth_header = request.headers.get("Authorization")
-            if not auth_header:
-                return await call_next(request)
-            
-            token = auth_header.split(" ")[1]
-            from jose import jwt
-            from app.core.config import settings
-            
-            payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
-            user_id = int(payload.get("sub"))
-            
-            # Get user's current organization
-            db = SessionLocal()
-            from app.models.user import User
-            user = db.query(User).filter(User.id == user_id).first()
-            db.close()
-            
-            if user and user.current_organization_id:
-                request.state.organization_id = user.current_organization_id
-            else:
-                request.state.organization_id = None
-                
-        except Exception:
-            request.state.organization_id = None
-            
+        request.state.organization_id = None
+
+        auth_header = request.headers.get("Authorization", "")
+        scheme, _, token = auth_header.partition(" ")
+        if scheme.lower() == "bearer" and token:
+            try:
+                payload = jwt.decode(
+                    token,
+                    settings.SECRET_KEY,
+                    algorithms=[settings.ALGORITHM],
+                )
+                request.state.organization_id = payload.get("organization_id")
+            except jwt.InvalidTokenError:
+                # Authentication dependencies return the authoritative 401.
+                pass
+
         return await call_next(request)

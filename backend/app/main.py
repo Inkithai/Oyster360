@@ -2,7 +2,9 @@ from fastapi import FastAPI, Request, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from datetime import datetime
+from sqlalchemy import text
 from sqlalchemy.orm import Session
+from app.core.config import settings
 from app.database.database import get_db
 from app.api import (
     auth_router, batches_router, recipes_router, 
@@ -17,7 +19,7 @@ app = FastAPI(title="Oyster360", version="1.0.0")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=settings.cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -123,7 +125,7 @@ def readiness_check(db: Session = Depends(get_db)):
     """Readiness check - verifies dependencies"""
     try:
         # Check database connection
-        db.execute("SELECT 1")
+        db.execute(text("SELECT 1"))
         db_status = "connected"
     except Exception as e:
         db_status = f"error: {str(e)}"
@@ -143,7 +145,7 @@ def liveness_check():
 def celery_status():
     """Check Celery worker status"""
     from app.core.celery import celery_app
-    i = celery_app.control.inspect()
+    i = celery_app.control.inspect(timeout=1)
     return {
         "active_workers": i.active() if i else [],
         "scheduled_tasks": i.scheduled() if i else []

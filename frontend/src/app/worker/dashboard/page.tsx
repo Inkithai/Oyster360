@@ -13,7 +13,7 @@ export default function WorkerDashboard() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <Card>
           <CardHeader>
-            <CardTitle>Today's Tasks</CardTitle>
+            <CardTitle>Today&apos;s Tasks</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3 text-sm">
             <div className="flex justify-between items-center border-b pb-2">
