@@ -237,7 +237,7 @@ Oyster360 is **medium-to-high complexity** for a web application. It is more inv
 - 28 backend service modules
 - 28 frontend page routes
 - 13 backend/frontend unit-test files, plus Playwright specifications
-- 7 Docker Compose service roles: frontend, backend, migration, PostgreSQL, Redis, Celery worker, and Celery Beat
+- Up to 7 Docker Compose service roles: frontend, backend, migration, PostgreSQL, Redis, Celery worker, and Celery Beat
 
 ### Architectural trade-off
 
@@ -276,6 +276,8 @@ For basic farm-management development, the default `AI_PROVIDER=rule-based` work
 
 ### 3. Build and start the application
 
+Start the core web stack:
+
 ```bash
 docker compose up --build
 ```
@@ -284,11 +286,16 @@ Docker Compose will:
 
 1. Start PostgreSQL and Redis.
 2. Build the backend image.
-3. Run `alembic upgrade head` in the one-time `migrate` service.
-4. Start FastAPI, the Celery worker, and Celery Beat.
-5. Build and start the Next.js frontend.
+3. Apply `alembic upgrade head` before FastAPI starts.
+4. Build and start the Next.js frontend.
 
-To run in the background:
+Enable the optional background worker and scheduler profile when developing Celery tasks:
+
+```bash
+docker compose --profile workers up --build
+```
+
+To run the core stack in the background:
 
 ```bash
 docker compose up --build -d
@@ -459,7 +466,7 @@ alembic revision --autogenerate -m "describe the schema change"
 alembic upgrade head
 ```
 
-The Docker Compose `migrate` service automatically applies migrations before the API and workers start.
+The local backend container applies migrations before starting FastAPI. The production Compose topology uses a dedicated one-time `migrate` service before API and worker replicas start.
 
 ## Testing and Quality Checks
 
