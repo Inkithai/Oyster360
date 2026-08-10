@@ -110,9 +110,9 @@ jobs:
         working-directory: frontend
         run: npm run typecheck
 
-      - name: Test frontend with coverage gate (>= 60%)
+      - name: Test frontend with coverage gate (lines/statements/functions >= 70%, branches >= 60%)
         working-directory: frontend
-        run: npm test -- --coverage
+        run: npx vitest run --coverage
 
       - name: Build frontend
         working-directory: frontend
