@@ -4,6 +4,9 @@ from app.database.database import get_db
 from app.services.assistant_service import AssistantService
 from app.services.document_service import DocumentService
 from app.core.dependencies import worker_access
+from app.core.tenant import get_current_organization
+from app.core.tenant_enforcer import TenantEnforcer
+from app.models.batch import Batch
 from app.models.user import User
 from pydantic import BaseModel
 from typing import Optional
@@ -18,9 +21,12 @@ class ChatRequest(BaseModel):
 def chat_with_assistant(
     request: ChatRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(worker_access)
+    current_user: User = Depends(worker_access),
+    organization_id: int = Depends(get_current_organization),
 ):
-    assistant = AssistantService(db)
+    if request.batch_id is not None:
+        TenantEnforcer(db, organization_id).safe_get(Batch, request.batch_id)
+    assistant = AssistantService(db, organization_id)
     result = assistant.answer_question(
         question=request.question,
         batch_id=request.batch_id,

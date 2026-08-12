@@ -6,7 +6,7 @@ from app.database.database import SessionLocal
 from app.models.refresh_token import RefreshToken
 from datetime import datetime
 
-@celery_app.task(name="cleanup_expired_tokens")
+@celery_app.task(name="app.tasks.maintenance_tasks.cleanup_expired_tokens")
 def cleanup_expired_tokens():
     """
     Clean up expired refresh tokens
@@ -21,7 +21,7 @@ def cleanup_expired_tokens():
     finally:
         db.close()
 
-@celery_app.task(name="generate_daily_reports")
+@celery_app.task(name="app.tasks.maintenance_tasks.generate_daily_reports")
 def generate_daily_reports():
     """
     Generate daily analytics reports

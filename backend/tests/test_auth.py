@@ -30,6 +30,7 @@ def test_user_login_success(client, auth_test_user):
     })
     assert response.status_code == 200
     assert "access_token" in response.json()
+    assert "refresh_token" in response.json()
 
 def test_login_invalid_credentials(client, auth_test_user):
     """Test login with invalid credentials"""
@@ -39,20 +40,68 @@ def test_login_invalid_credentials(client, auth_test_user):
     })
     assert response.status_code == 401
 
-def test_refresh_token_without_token(client):
-    """Test refresh token endpoint requires valid token"""
+def test_refresh_token_rejects_invalid_token(client):
+    """Test refresh token endpoint rejects an unknown token."""
     response = client.post("/api/auth/refresh-token", json={
         "refresh_token": "invalid_token"
     })
-    assert response.status_code == 422
+    assert response.status_code == 401
+
+
+def test_refresh_token_rotates_token(client, auth_test_user):
+    login_response = client.post("/api/auth/login", json={
+        "email": "test@test.com",
+        "password": "testpass123"
+    })
+    original_refresh_token = login_response.json()["refresh_token"]
+
+    response = client.post("/api/auth/refresh-token", json={
+        "refresh_token": original_refresh_token
+    })
+    assert response.status_code == 200
+    assert response.json()["refresh_token"] != original_refresh_token
+
+    replay = client.post("/api/auth/refresh-token", json={
+        "refresh_token": original_refresh_token
+    })
+    assert replay.status_code == 401
 
 def test_forgot_password(client, auth_test_user):
     """Test forgot password endpoint"""
-    response = client.post("/api/auth/forgot-password", params={
+    response = client.post("/api/auth/forgot-password", json={
         "email": "test@test.com"
     })
     assert response.status_code == 200
     assert "message" in response.json()
+
+def test_reset_password_flow(client, db_session, auth_test_user):
+    response = client.post("/api/auth/forgot-password", json={
+        "email": "test@test.com"
+    })
+    assert response.status_code == 200
+
+    db_session.refresh(auth_test_user)
+    reset_token = auth_test_user.password_reset_token
+    assert reset_token
+
+    response = client.post("/api/auth/reset-password", json={
+        "token": reset_token,
+        "new_password": "new-password-123"
+    })
+    assert response.status_code == 200
+
+    replay = client.post("/api/auth/reset-password", json={
+        "token": reset_token,
+        "new_password": "another-password-123"
+    })
+    assert replay.status_code == 400
+
+    login = client.post("/api/auth/login", json={
+        "email": "test@test.com",
+        "password": "new-password-123"
+    })
+    assert login.status_code == 200
+
 
 def test_change_password_with_wrong_current_password(client, auth_test_user):
     """Test change password with incorrect current password"""

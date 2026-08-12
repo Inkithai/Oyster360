@@ -10,8 +10,6 @@ from app.models.organization import Organization, OrganizationMember
 from app.models.batch import Batch
 from datetime import datetime
 
-client = TestClient(app)
-
 @pytest.fixture
 def test_organization(db_session):
     """Create test organization"""
@@ -47,7 +45,7 @@ def test_user(db_session, test_organization):
     
     return user
 
-def test_complete_batch_lifecycle(db_session, test_user, test_organization):
+def test_complete_batch_lifecycle(client, db_session, test_user, test_organization):
     """Test complete batch creation and management flow"""
     token = create_access_token({"sub": str(test_user.id), "role": test_user.role})
     headers = {"Authorization": f"Bearer {token}"}
@@ -78,7 +76,7 @@ def test_complete_batch_lifecycle(db_session, test_user, test_organization):
     assert response.status_code == 200
     assert response.json()["current_stage"] == "INOCULATION"
 
-def test_organization_isolation(db_session, test_user, test_organization):
+def test_organization_isolation(client, db_session, test_user, test_organization):
     """Test that users cannot access other organizations' data"""
     # Create another organization
     other_org = Organization(name="Other Org", slug="other-org", created_at=datetime.utcnow())
