@@ -30,6 +30,8 @@ class StripeService:
         price_id: str, 
         success_url: str, 
         cancel_url: str,
+        organization_id: int,
+        plan: str,
         trial_days: int = 14
     ) -> Dict[str, Any]:
         """Create a checkout session for subscription"""
@@ -43,8 +45,17 @@ class StripeService:
             mode='subscription',
             success_url=success_url,
             cancel_url=cancel_url,
+            client_reference_id=str(organization_id),
+            metadata={
+                'organization_id': str(organization_id),
+                'plan': plan,
+            },
             subscription_data={
                 'trial_period_days': trial_days,
+                'metadata': {
+                    'organization_id': str(organization_id),
+                    'plan': plan,
+                },
             }
         )
         return session

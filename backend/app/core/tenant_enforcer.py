@@ -38,6 +38,10 @@ class TenantEnforcer:
             
         return query
 
+    def get_all(self, model: Type[Any]):
+        """Return every record visible to the current organization."""
+        return self.safe_filter(model).all()
+
     def safe_create(self, model: Type[Any], **kwargs) -> Any:
         """Automatically assign organization_id on creation"""
         if hasattr(model, 'organization_id'):

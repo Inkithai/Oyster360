@@ -1,75 +1,97 @@
-"""
-Stripe Webhook Handlers
-"""
-from fastapi import APIRouter, Request, HTTPException, Depends
-from sqlalchemy.orm import Session
-from app.database.database import get_db
-from app.services.billing_service import BillingService
-import stripe
+"""Verified, idempotent Stripe webhook handlers."""
+
+from datetime import datetime
 import os
-import json
+
+from fastapi import APIRouter, Depends, HTTPException, Request
+from sqlalchemy.orm import Session
+import stripe
+
+from app.database.database import get_db
+from app.models.organization import Organization
+from app.services.billing_service import BillingService
 
 router = APIRouter()
 stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
 
+
+def _timestamp(value) -> datetime | None:
+    return datetime.utcfromtimestamp(value) if value else None
+
+
+def _organization_id(metadata: dict, db: Session) -> int:
+    try:
+        organization_id = int(metadata.get("organization_id"))
+    except (TypeError, ValueError):
+        raise HTTPException(
+            status_code=400,
+            detail="Stripe event is missing organization metadata",
+        )
+
+    exists = db.query(Organization.id).filter(
+        Organization.id == organization_id
+    ).first()
+    if not exists:
+        raise HTTPException(status_code=400, detail="Unknown organization")
+    return organization_id
+
+
 @router.post("/stripe")
 async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
-    """
-    Handle Stripe webhook events
-    """
     payload = await request.body()
-    sig_header = request.headers.get("stripe-signature")
+    signature = request.headers.get("stripe-signature")
     webhook_secret = os.getenv("STRIPE_WEBHOOK_SECRET")
 
+    if not webhook_secret:
+        raise HTTPException(status_code=503, detail="Stripe webhooks are not configured")
+    if not signature:
+        raise HTTPException(status_code=400, detail="Missing Stripe signature")
+
     try:
-        event = stripe.Webhook.construct_event(
-            payload, sig_header, webhook_secret
-        )
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid payload")
-    except stripe.error.SignatureVerificationError:
-        raise HTTPException(status_code=400, detail="Invalid signature")
+        event = stripe.Webhook.construct_event(payload, signature, webhook_secret)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail="Invalid payload") from exc
+    except stripe.SignatureVerificationError as exc:
+        raise HTTPException(status_code=400, detail="Invalid signature") from exc
 
-    billing_service = BillingService(db)
+    billing = BillingService(db)
+    event_type = event["type"]
+    obj = event["data"]["object"]
 
-    # Handle different event types
-    if event["type"] == "checkout.session.completed":
-        session = event["data"]["object"]
-        # Create subscription record
-        billing_service.create_subscription(
-            organization_id=int(session["metadata"].get("organization_id", 0)),
-            stripe_customer_id=session["customer"],
-            stripe_subscription_id=session["subscription"],
-            plan=session["metadata"].get("plan", "starter"),
-            status="trialing"
-        )
-
-    elif event["type"] == "invoice.paid":
-        invoice = event["data"]["object"]
-        # Update subscription status
-        if invoice.get("subscription"):
-            billing_service.update_subscription_status(
-                invoice["subscription"], "active"
-            )
-
-    elif event["type"] == "invoice.payment_failed":
-        invoice = event["data"]["object"]
-        # Handle failed payment
-        if invoice.get("subscription"):
-            billing_service.update_subscription_status(
-                invoice["subscription"], "past_due"
-            )
-
-    elif event["type"] == "customer.subscription.deleted":
-        subscription = event["data"]["object"]
-        # Handle subscription cancellation
-        billing_service.update_subscription_status(
-            subscription["id"], "canceled"
+    if event_type == "checkout.session.completed":
+        organization_id = _organization_id(obj.get("metadata", {}), db)
+        if not obj.get("customer") or not obj.get("subscription"):
+            raise HTTPException(status_code=400, detail="Incomplete checkout session")
+        billing.create_subscription(
+            organization_id=organization_id,
+            stripe_customer_id=obj["customer"],
+            stripe_subscription_id=obj["subscription"],
+            plan=obj.get("metadata", {}).get("plan", "starter"),
+            status="trialing",
         )
 
-    elif event["type"] == "customer.subscription.trial_will_end":
-        subscription = event["data"]["object"]
-        # Send notification about trial ending
-        pass
+    elif event_type in {
+        "customer.subscription.created",
+        "customer.subscription.updated",
+        "customer.subscription.deleted",
+    }:
+        metadata = obj.get("metadata", {})
+        organization_id = _organization_id(metadata, db)
+        billing.sync_subscription(
+            organization_id=organization_id,
+            stripe_customer_id=obj["customer"],
+            stripe_subscription_id=obj["id"],
+            plan=metadata.get("plan", "starter"),
+            status=obj.get("status", "canceled"),
+            current_period_start=_timestamp(obj.get("current_period_start")),
+            current_period_end=_timestamp(obj.get("current_period_end")),
+            cancel_at_period_end=bool(obj.get("cancel_at_period_end", False)),
+        )
+
+    elif event_type == "invoice.paid" and obj.get("subscription"):
+        billing.update_subscription_status(obj["subscription"], "active")
+
+    elif event_type == "invoice.payment_failed" and obj.get("subscription"):
+        billing.update_subscription_status(obj["subscription"], "past_due")
 
     return {"status": "success"}

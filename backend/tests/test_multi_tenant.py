@@ -39,12 +39,15 @@ def test_user_b_cannot_access_org_a_recipe(client, tenant_test_data):
     assert response.status_code in [403, 404], f"Expected 403/404, got {response.status_code}"
 
 def test_user_b_can_access_own_inventory(client, tenant_test_data):
-    """User B should be able to access their own inventory"""
+    """User B should only see inventory owned by organization B."""
     data = tenant_test_data
-    
+
     response = client.get(
-        f"/api/inventory/items",
+        "/api/inventory/items",
         headers={"Authorization": f"Bearer {data['token_b']}"}
     )
-    
+
     assert response.status_code == 200, f"Expected 200, got {response.status_code}"
+    returned_ids = {item["id"] for item in response.json()}
+    assert data["inventory_b"] in returned_ids
+    assert data["inventory_a"] not in returned_ids

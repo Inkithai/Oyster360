@@ -16,6 +16,7 @@ from .grow_bag import GrowBag
 from .environment_log import EnvironmentLog
 from .growth_log import GrowthLog
 from .harvest import Harvest
+from .harvest_grade import HarvestGrade
 from .inventory import InventoryItem, InventoryTransaction
 from .purchase import Supplier, PurchaseOrder, PurchaseOrderItem
 from .subscription import Subscription
@@ -26,6 +27,10 @@ from .document import KnowledgeDocument, DocumentChunk
 from .admin import AuditLog, FeatureFlag
 from .conversation import Conversation, Message
 from .refresh_token import RefreshToken
+from .ai_conversation import AIConversation
+from .ai_insight import AIInsight
+from .image_analysis import ImageAnalysis
+from .sensor import Sensor
 
 # Ensure all mappers are configured
 from sqlalchemy.orm import configure_mappers

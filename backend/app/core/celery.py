@@ -16,7 +16,6 @@ celery_app = Celery(
     include=[
         "app.tasks.email_tasks",
         "app.tasks.ai_tasks",
-        "app.tasks.image_tasks",
         "app.tasks.maintenance_tasks",
     ]
 )
