@@ -23,29 +23,20 @@ services:
       timeout: 5s
       retries: 5
 
-  migrate:
-    image: oyster360-backend:local
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    command: ["alembic", "upgrade", "head"]
-    depends_on:
-      postgres:
-        condition: service_healthy
-    environment:
-      DATABASE_URL: postgresql://${DB_USER:-oyster360}:${DB_PASSWORD:-oyster360_secure_pass}@postgres:5432/${DB_NAME:-oyster360}
-    restart: "no"
-
   backend:
     image: oyster360-backend:local
     build:
       context: ./backend
       dockerfile: Dockerfile
+    command:
+      - /bin/sh
+      - -c
+      - alembic upgrade head && exec uvicorn app.main:app --host 0.0.0.0 --port 8000
     ports:
       - "8000:8000"
     depends_on:
-      migrate:
-        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
       redis:
         condition: service_healthy
     environment:
@@ -65,11 +56,12 @@ services:
     restart: unless-stopped
 
   celery-worker:
+    profiles: ["workers"]
     image: oyster360-backend:local
     command: ["celery", "-A", "app.core.celery:celery_app", "worker", "--loglevel=info"]
     depends_on:
-      migrate:
-        condition: service_completed_successfully
+      backend:
+        condition: service_healthy
       redis:
         condition: service_healthy
     environment:
@@ -80,11 +72,12 @@ services:
     restart: unless-stopped
 
   celery-beat:
+    profiles: ["workers"]
     image: oyster360-backend:local
     command: ["celery", "-A", "app.core.celery:celery_app", "beat", "--loglevel=info"]
     depends_on:
-      migrate:
-        condition: service_completed_successfully
+      backend:
+        condition: service_healthy
       redis:
         condition: service_healthy
     environment:
