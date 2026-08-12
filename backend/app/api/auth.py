@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+import re
 import secrets
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -7,6 +8,8 @@ from sqlalchemy.orm import Session
 from app.core.dependencies import get_current_user
 from app.core.security import create_access_token, get_password_hash, verify_password
 from app.database.database import get_db
+from app.models.farm import Farm
+from app.models.organization import Organization, OrganizationMember
 from app.models.refresh_token import RefreshToken
 from app.models.user import User, UserRole
 from app.schemas.user import (
@@ -52,6 +55,36 @@ def register(user_in: UserCreate, db: Session = Depends(get_db)):
         role=UserRole.FARM_MANAGER,
     )
     db.add(user)
+    db.flush()
+
+    slug_base = re.sub(r"[^a-z0-9]+", "-", user_in.farm_name.lower()).strip("-")
+    slug_base = slug_base or "farm"
+    slug = slug_base
+    if db.query(Organization).filter(Organization.slug == slug).first():
+        slug = f"{slug_base}-{secrets.token_hex(3)}"
+
+    organization = Organization(
+        name=user_in.farm_name,
+        slug=slug,
+        owner_id=user.id,
+        created_at=datetime.utcnow(),
+    )
+    db.add(organization)
+    db.flush()
+    db.add_all([
+        OrganizationMember(
+            organization_id=organization.id,
+            user_id=user.id,
+            role="OWNER",
+            joined_at=datetime.utcnow(),
+        ),
+        Farm(
+            name=user_in.farm_name,
+            owner_id=user.id,
+            organization_id=organization.id,
+        ),
+    ])
+    user.current_organization_id = organization.id
     db.commit()
     db.refresh(user)
     return user
