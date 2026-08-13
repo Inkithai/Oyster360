@@ -15,6 +15,10 @@ Thank you for improving Oyster360. Keep changes focused, reviewable, and proven 
 - Keep one concern per commit. Put the behavior change and the tests proving it in the same commit.
 - Do not combine mass formatting, generated files, and feature work.
 - Add a changelog entry under `Unreleased` for user-visible changes.
+
+### Generated migration policy
+
+Alembic revisions in `backend/alembic/versions/` are generated schema history, not hand-maintained application modules. They are intentionally excluded from the backend lint and source-file cleanliness checks; do not split or reformat a revision solely to satisfy a line-count rule. Review every generated revision for correctness, then keep it as one focused migration.
 - Update API and environment documentation when contracts change.
 
 ## Required checks
