@@ -1,0 +1,25 @@
+# Local hooks match the CI lint step in .github/workflows/ci.yml.
+# Generated Alembic revisions are excluded (see .flake8 / setup.cfg).
+repos:
+  - repo: https://github.com/pycqa/flake8
+    rev: 7.3.0
+    hooks:
+      - id: flake8
+        name: flake8 (backend app + tests)
+        files: ^backend/(app|tests)/
+        args:
+          - --count
+          - --select=E9,F63,F7,F82
+          - --show-source
+          - --statistics
+          - --exclude=.venv,__pycache__,backend/alembic/versions,alembic/versions
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-added-large-files
+        args: ["--maxkb=1024"]
+      - id: check-merge-conflict
