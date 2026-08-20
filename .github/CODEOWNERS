@@ -1,0 +1,8 @@
+# Review routing. Default reviewers for anything not listed below.
+*       @Inkithai
+
+/.github/                @Inkithai
+/backend/app/            @Inkithai
+/backend/tests/          @Inkithai
+/frontend/src/           @Inkithai
+/docs/                   @Inkithai
