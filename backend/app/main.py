@@ -1,10 +1,13 @@
-from fastapi import FastAPI, Request, Depends
+from fastapi import FastAPI, Request, Depends, Response, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from datetime import datetime
+from datetime import datetime, timezone
+from pydantic import BaseModel
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 from app.core.config import settings
+from app.core.error_tracking import init_error_tracking
+from app.core.logging import configure_logging, logger
 from app.database.database import get_db
 from app.api import (
     auth_router, batches_router, recipes_router, 
@@ -15,7 +18,10 @@ from app.api import (
     saas_analytics_router, mfa_router, compliance_router, webhooks_router
 )
 
-app = FastAPI(title="Oyster360", version="1.0.0")
+configure_logging(settings.LOG_LEVEL)
+init_error_tracking()
+
+app = FastAPI(title="Oyster360", version=settings.APP_VERSION)
 
 app.add_middleware(
     CORSMiddleware,
@@ -31,6 +37,14 @@ app.add_middleware(TenantMiddleware)
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
+    logger.exception(
+        "Unhandled request error",
+        extra={
+            "request_id": getattr(request.state, "request_id", None),
+            "method": request.method,
+            "path": request.url.path,
+        },
+    )
     return JSONResponse(
         status_code=500,
         content={"detail": "An unexpected error occurred. Please try again."},
@@ -53,8 +67,19 @@ async def add_request_id(request: Request, call_next):
     import uuid
     request_id = str(uuid.uuid4())
     request.state.request_id = request_id
+    started_at = time.perf_counter()
     response = await call_next(request)
     response.headers["X-Request-ID"] = request_id
+    logger.info(
+        "Request completed",
+        extra={
+            "request_id": request_id,
+            "method": request.method,
+            "path": request.url.path,
+            "status_code": response.status_code,
+            "duration_ms": round((time.perf_counter() - started_at) * 1000, 2),
+        },
+    )
     return response
 
 # Simple in-memory rate limiting
@@ -111,34 +136,51 @@ app.include_router(webhooks_router, prefix="/api/webhooks", tags=["Webhooks"])
 def root():
     return {"message": "MycoFarm AI - Oyster Mushroom Platform"}
 
-@app.get("/health")
+class HealthResponse(BaseModel):
+    status: str
+    service: str
+    timestamp: datetime
+
+
+class ReadinessResponse(BaseModel):
+    status: str
+    database: str
+    timestamp: datetime
+
+
+@app.get("/health", response_model=HealthResponse, tags=["Operations"])
 def health_check():
-    """Basic health check"""
-    return {
-        "status": "healthy",
-        "service": "oyster360-backend",
-        "timestamp": datetime.utcnow().isoformat()
-    }
+    """Dependency-free process health check for load balancers."""
+    return HealthResponse(
+        status="healthy",
+        service="oyster360-backend",
+        timestamp=datetime.now(timezone.utc),
+    )
 
-@app.get("/ready")
-def readiness_check(db: Session = Depends(get_db)):
-    """Readiness check - verifies dependencies"""
+
+@app.get("/ready", response_model=ReadinessResponse, tags=["Operations"])
+def readiness_check(response: Response, db: Session = Depends(get_db)):
+    """Report whether this instance can serve database-backed traffic."""
     try:
-        # Check database connection
         db.execute(text("SELECT 1"))
-        db_status = "connected"
-    except Exception as e:
-        db_status = f"error: {str(e)}"
-    
-    return {
-        "status": "ready" if db_status == "connected" else "not_ready",
-        "database": db_status,
-        "timestamp": datetime.utcnow().isoformat()
-    }
+        database_status = "connected"
+        readiness_status = "ready"
+    except Exception:
+        logger.exception("Database readiness check failed")
+        database_status = "unavailable"
+        readiness_status = "not_ready"
+        response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
 
-@app.get("/live")
+    return ReadinessResponse(
+        status=readiness_status,
+        database=database_status,
+        timestamp=datetime.now(timezone.utc),
+    )
+
+
+@app.get("/live", tags=["Operations"])
 def liveness_check():
-    """Liveness check for Kubernetes"""
+    """Liveness check for container orchestrators."""
     return {"status": "alive"}
 
 @app.get("/celery-status")
