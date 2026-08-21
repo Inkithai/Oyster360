@@ -1,52 +1,46 @@
-"""
-Oyster360 Structured Logging
-Production-ready logging configuration
-"""
-import logging
+"""Central JSON logging configuration for API and worker processes."""
+
 import json
-from datetime import datetime
-from typing import Any, Dict
+import logging
 import sys
+from datetime import datetime, timezone
+from typing import Any
 
-class StructuredLogger:
-    def __init__(self, name: str = "oyster360"):
-        self.logger = logging.getLogger(name)
-        self.logger.setLevel(logging.INFO)
-        
-        # Console handler
-        handler = logging.StreamHandler(sys.stdout)
-        handler.setFormatter(logging.Formatter(
-            '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-        ))
-        self.logger.addHandler(handler)
-    
-    def _log(self, level: str, message: str, extra: Dict[str, Any] = None):
-        log_data = {
-            "timestamp": datetime.utcnow().isoformat(),
-            "level": level,
-            "message": message,
-            "service": "oyster360",
-            **(extra or {})
+
+_STANDARD_FIELDS = set(logging.makeLogRecord({}).__dict__) | {"message", "asctime"}
+
+
+class JsonFormatter(logging.Formatter):
+    """Serialize standard LogRecord instances for log aggregation platforms."""
+
+    def format(self, record: logging.LogRecord) -> str:
+        payload: dict[str, Any] = {
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "level": record.levelname,
+            "logger": record.name,
+            "message": record.getMessage(),
+            "service": "oyster360-backend",
         }
-        self.logger.info(json.dumps(log_data))
-    
-    def info(self, message: str, **kwargs):
-        self._log("INFO", message, kwargs)
-    
-    def error(self, message: str, **kwargs):
-        self._log("ERROR", message, kwargs)
-    
-    def warning(self, message: str, **kwargs):
-        self._log("WARNING", message, kwargs)
-    
-    def audit(self, action: str, user_id: int, resource: str, **kwargs):
-        """Audit logging for security events"""
-        self._log("AUDIT", f"User {user_id} performed {action} on {resource}", {
-            "action": action,
-            "user_id": user_id,
-            "resource": resource,
-            **kwargs
+        payload.update({
+            key: value for key, value in record.__dict__.items()
+            if key not in _STANDARD_FIELDS and not key.startswith("_")
         })
+        if record.exc_info:
+            payload["exception"] = self.formatException(record.exc_info)
+        return json.dumps(payload, default=str)
 
-# Global logger instance
-logger = StructuredLogger()
+
+def configure_logging(level: str = "INFO") -> None:
+    """Configure the root logger once; application modules use normal logging APIs."""
+    root = logging.getLogger()
+    if any(getattr(handler, "_oyster360_handler", False) for handler in root.handlers):
+        return
+    handler = logging.StreamHandler(sys.stdout)
+    handler.setFormatter(JsonFormatter())
+    handler._oyster360_handler = True  # type: ignore[attr-defined]
+    root.handlers.clear()
+    root.addHandler(handler)
+    root.setLevel(level.upper())
+
+
+logger = logging.getLogger("oyster360")

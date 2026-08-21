@@ -18,6 +18,11 @@ class Settings(BaseSettings):
     STRIPE_PRICE_STARTER: str | None = None
     STRIPE_PRICE_PRO: str | None = None
     STRIPE_PRICE_ENTERPRISE: str | None = None
+    APP_ENV: str = "development"
+    APP_VERSION: str = "1.0.0"
+    LOG_LEVEL: str = "INFO"
+    SENTRY_DSN: str | None = None
+    SENTRY_TRACES_SAMPLE_RATE: float = Field(default=0.0, ge=0.0, le=1.0)
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
