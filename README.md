@@ -584,13 +584,27 @@ Main API families are mounted under `/api/auth`, `/api/batches`, `/api/recipes`,
 - [User Guide](docs/USER_GUIDE.md)
 - [Roadmap Status](docs/ROADMAP_STATUS.md)
 
+## Reproducible Dependencies
+
+Both package ecosystems have committed lockfiles. Frontend installs must use `npm ci` with `frontend/package-lock.json`. Backend local development and CI install `backend/requirements.lock`, which pins direct and transitive Python dependencies.
+
+To intentionally refresh the backend lock in a clean virtual environment:
+
+```bash
+cd backend
+python -m venv .lock-venv
+. .lock-venv/bin/activate
+python -m pip install --upgrade pip
+pip install -r requirements.txt
+pip freeze --exclude-editable > requirements.lock
+pytest
+```
+
+Review the resulting dependency diff and security scan before committing it. Dependabot checks npm and pip dependencies weekly via `.github/dependabot.yml`.
+
 ## Contributing
 
-1. Fork the repository.
-2. Create a focused feature branch.
-3. Add or update tests with the change.
-4. Run backend tests, frontend lint/tests/build, and relevant browser tests.
-5. Open a pull request with a clear summary and validation notes.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for setup, test gates, commit conventions, and the pull-request checklist. User-visible changes are recorded in [CHANGELOG.md](CHANGELOG.md). Keep each feature or fix in a focused Conventional Commit together with the tests that prove it.
 
 ## License
 
