@@ -499,8 +499,9 @@ The backend suite uses an isolated in-memory SQLite database for API, authentica
 cd frontend
 npm ci
 npm run lint
+npm run typecheck
 npm test
-npm test -- --coverage
+npm run test:coverage    # Vitest with lines/statements/functions >= 70%, branches >= 60%
 npm run build
 ```
 
@@ -598,7 +599,7 @@ Main API families are mounted under `/api/auth`, `/api/batches`, `/api/recipes`,
 
 ## Reproducible Dependencies
 
-Both package ecosystems have committed lockfiles. Frontend installs must use `npm ci` with `frontend/package-lock.json`. Backend local development and CI install `backend/requirements.lock`, which pins direct and transitive Python dependencies.
+Both package ecosystems have committed lockfiles. Frontend installs must use `npm ci` with `frontend/package-lock.json`. Backend local development and CI install `backend/requirements.lock` (also published as `backend/uv.lock` and declared in the root `pyproject.toml`), which pins direct and transitive Python dependencies. The root `requirements.txt` and `pyproject.toml` exist so dependency scanners that only inspect the repository root still see the runtime manifest.
 
 To intentionally refresh the backend lock in a clean virtual environment:
 

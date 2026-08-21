@@ -12,9 +12,11 @@ Thank you for improving Oyster360. Keep changes focused, reviewable, and proven 
 ## Change discipline
 
 - Use Conventional Commits (`feat:`, `fix:`, `test:`, `docs:`, `refactor:`, `chore:`).
-- Keep one concern per commit. Put the behavior change and the tests proving it in the same commit.
+- Keep one concern per commit. Put the behavior change under `backend/app` or `frontend/src` and the tests proving it in the same commit.
+- Prefer small pull requests. Open an issue first for anything larger than a focused fix so other contributors can pick it up.
 - Do not combine mass formatting, generated files, and feature work.
 - Add a changelog entry under `Unreleased` for user-visible changes.
+- New contributors: look for issues labeled `good first issue`.
 
 ### Generated migration policy
 
