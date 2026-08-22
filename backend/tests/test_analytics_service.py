@@ -14,6 +14,7 @@ from app.models.batch import Batch, BatchStage
 from app.models.environment_log import EnvironmentLog
 from app.models.harvest import Harvest
 from app.models.organization import Organization
+from app.models.recipe import Recipe, RecipeVersion
 from app.models.strain import Strain
 from app.services.analytics_service import AnalyticsService
 
@@ -174,3 +175,118 @@ class TestPredictYieldForBatch:
         )
 
         assert result == {"error": "Batch not found"}
+
+
+@pytest.fixture
+def recipe_farm(db_session, analytics_farm):
+    """Attach a two-version recipe to the analytics farm's batches.
+
+    Version 1 feeds the completed Pearl batch (500 kg harvested) and one
+    fruited-but-unharvested batch; version 2 feeds the active Pearl batch
+    (300 kg harvested).
+    """
+    recipe = Recipe(name="Straw Bran Analytic", organization_id=analytics_farm.org.id,
+                    created_at=datetime.utcnow())
+    db_session.add(recipe)
+    db_session.flush()
+
+    version_one = RecipeVersion(recipe_id=recipe.id, version=1,
+                                ingredients={"straw": 70, "bran": 30})
+    version_two = RecipeVersion(recipe_id=recipe.id, version=2,
+                                ingredients={"straw": 80, "bran": 20})
+    db_session.add_all([version_one, version_two])
+    db_session.flush()
+
+    unharvested = Batch(batch_number="AN-RECIPE-OPEN",
+                        organization_id=analytics_farm.org.id,
+                        strain_id=analytics_farm.pearl.id,
+                        recipe_version_id=version_one.id,
+                        current_stage=BatchStage.COMPLETED, status="completed",
+                        start_date=datetime.utcnow() - timedelta(days=30))
+    db_session.add(unharvested)
+    analytics_farm.pearl_done.recipe_version_id = version_one.id
+    analytics_farm.pearl_active.recipe_version_id = version_two.id
+    db_session.commit()
+
+    analytics_farm.recipe = recipe
+    analytics_farm.unharvested = unharvested
+    return analytics_farm
+
+
+class TestStrainPerformance:
+    def test_metrics_come_from_recorded_batches_and_harvests(
+        self, db_session, analytics_farm
+    ):
+        rows = AnalyticsService(db_session).get_strain_performance(
+            analytics_farm.org.id
+        )
+
+        by_name = {row["name"]: row for row in rows}
+        # Pearl: batches harvested 500 kg and 300 kg -> average 400.0; one of
+        # the two batches has completed its cycle.
+        assert by_name["Pearl Analytic"] == {
+            "name": "Pearl Analytic",
+            "batches": 2,
+            "avg_yield": 400.0,
+            "success_rate": 50.0,
+        }
+        # Blue: one batch, no harvests yet, still fruiting.
+        assert by_name["Blue Analytic"] == {
+            "name": "Blue Analytic",
+            "batches": 1,
+            "avg_yield": 0.0,
+            "success_rate": 0.0,
+        }
+
+    def test_is_tenant_scoped(self, db_session, analytics_farm):
+        other_org = Organization(name="Stranger Farm", slug="stranger-farm",
+                                 created_at=datetime.utcnow())
+        db_session.add(other_org)
+        db_session.flush()
+        other_strain = Strain(name="Stranger Strain", species="Pleurotus ostreatus")
+        db_session.add(other_strain)
+        db_session.flush()
+        db_session.add(Batch(batch_number="STRANGER-1", organization_id=other_org.id,
+                             strain_id=other_strain.id, status="active"))
+        db_session.commit()
+
+        rows = AnalyticsService(db_session).get_strain_performance(
+            analytics_farm.org.id
+        )
+
+        assert {row["name"] for row in rows} == {"Pearl Analytic", "Blue Analytic"}
+
+
+class TestRecipePerformance:
+    def test_metrics_come_from_version_usage_and_harvests(
+        self, db_session, recipe_farm
+    ):
+        rows = AnalyticsService(db_session).get_recipe_performance(
+            recipe_farm.org.id
+        )
+
+        assert len(rows) == 1
+        assert rows[0]["name"] == "Straw Bran Analytic"
+        assert rows[0]["versions"] == 2
+        # Three batches use the recipe; only two have harvests (500, 300).
+        assert rows[0]["batches"] == 3
+        assert rows[0]["avg_yield"] == 400.0
+        # Two of the three batches completed.
+        assert rows[0]["success_rate"] == 66.7
+
+    def test_recipe_without_batches_reports_zero_metrics(
+        self, db_session, analytics_farm
+    ):
+        db_session.add(Recipe(name="Unused Analytic",
+                              organization_id=analytics_farm.org.id,
+                              created_at=datetime.utcnow()))
+        db_session.commit()
+
+        rows = AnalyticsService(db_session).get_recipe_performance(
+            analytics_farm.org.id
+        )
+
+        unused = next(r for r in rows if r["name"] == "Unused Analytic")
+        assert unused["batches"] == 0
+        assert unused["avg_yield"] == 0.0
+        assert unused["success_rate"] == 0.0

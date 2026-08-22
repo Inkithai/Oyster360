@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from app.models.batch import Batch, BatchStage
 from app.models.environment_log import EnvironmentLog
 from app.models.harvest import Harvest
-from app.models.recipe import Recipe, RecipeVersion
+from app.models.recipe import Recipe
 from app.models.strain import Strain
 from app.models.yield_prediction import YieldPrediction
 from app.services.cache_service import cache
@@ -229,40 +229,70 @@ class AnalyticsService:
         }
 
     def get_strain_performance(self, organization_id: int) -> List[Dict]:
-        strain_ids = self.db.query(Batch.strain_id).filter(
+        """Per-strain metrics aggregated from real batches and harvests."""
+        batches = self.db.query(Batch).filter(
             Batch.organization_id == organization_id
-        ).distinct()
-        strains = self.db.query(Strain).filter(Strain.id.in_(strain_ids)).all()
+        ).all()
+        strain_ids = {b.strain_id for b in batches if b.strain_id is not None}
+        if not strain_ids:
+            return []
+
+        strains = self.db.query(Strain).filter(
+            Strain.id.in_(strain_ids)
+        ).order_by(Strain.name).all()
+        harvest_totals = self._harvest_totals_by_batch(organization_id)
+
         result = []
         for strain in strains:
-            batch_count = self.db.query(Batch).filter(
-                Batch.strain_id == strain.id,
-                Batch.organization_id == organization_id,
-            ).count()
+            strain_batches = [b for b in batches if b.strain_id == strain.id]
             result.append(
-                {
-                    "name": strain.name,
-                    "batches": batch_count,
-                    "avg_yield": round(780 + (hash(strain.name) % 150), 1),
-                    "success_rate": round(85 + (hash(strain.name) % 12), 1),
-                }
+                self._performance_row(strain.name, strain_batches, harvest_totals)
             )
         return result
 
     def get_recipe_performance(self, organization_id: int) -> List[Dict]:
+        """Per-recipe metrics aggregated from real batches and harvests."""
         recipes = self.db.query(Recipe).filter(
             Recipe.organization_id == organization_id
+        ).order_by(Recipe.name).all()
+        batches = self.db.query(Batch).filter(
+            Batch.organization_id == organization_id
         ).all()
+        harvest_totals = self._harvest_totals_by_batch(organization_id)
+
         result = []
         for recipe in recipes:
-            result.append(
-                {
-                    "name": recipe.name,
-                    "versions": self.db.query(RecipeVersion).filter(
-                        RecipeVersion.recipe_id == recipe.id
-                    ).count(),
-                    "avg_yield": round(750 + (hash(recipe.name) % 180), 1),
-                    "success_rate": round(88 + (hash(recipe.name) % 10), 1),
-                }
-            )
+            version_ids = {version.id for version in recipe.versions}
+            recipe_batches = [
+                b for b in batches if b.recipe_version_id in version_ids
+            ]
+            row = self._performance_row(recipe.name, recipe_batches, harvest_totals)
+            row["versions"] = len(version_ids)
+            result.append(row)
         return result
+
+    @staticmethod
+    def _performance_row(
+        name: str, batches: List[Batch], harvest_totals: Dict[int, float]
+    ) -> Dict:
+        """Average harvested kg and completion rate for one group of batches."""
+        harvested_batches = [
+            harvest_totals[b.id] for b in batches if b.id in harvest_totals
+        ]
+        avg_yield = (
+            round(sum(harvested_batches) / len(harvested_batches), 1)
+            if harvested_batches
+            else 0.0
+        )
+        completed = sum(
+            1 for b in batches if b.current_stage == BatchStage.COMPLETED
+        )
+        success_rate = (
+            round((completed / len(batches)) * 100, 1) if batches else 0.0
+        )
+        return {
+            "name": name,
+            "batches": len(batches),
+            "avg_yield": avg_yield,
+            "success_rate": success_rate,
+        }
