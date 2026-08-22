@@ -1,0 +1,21 @@
+FROM node:20-bookworm
+
+ENV DEBIAN_FRONTEND=noninteractive \
+    PATH=/workspace/.venv/bin:$PATH \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends python3 python3-venv python3-dev gcc \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /workspace
+COPY backend/requirements.lock backend/requirements.lock
+RUN python3 -m venv .venv && pip install --no-cache-dir -r backend/requirements.lock
+
+COPY frontend/package.json frontend/package-lock.json frontend/
+RUN cd frontend && npm ci
+
+COPY . .
+
+CMD ["sh", "-c", "cd backend && pytest && cd ../frontend && npm run typecheck && npm test -- --coverage"]
