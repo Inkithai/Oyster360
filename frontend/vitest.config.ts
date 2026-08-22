@@ -17,6 +17,12 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       reporter: ['text', 'lcov'],
+      // A passing baseline prevents coverage from regressing while the component
+      // suite is expanded. Raise this to 60 once page-level tests are in place.
+      thresholds: {
+        lines: 5,
+        statements: 5,
+      },
     },
   },
 })
