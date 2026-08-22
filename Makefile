@@ -29,7 +29,7 @@ seed: ## Seed demo farm data inside the running backend
 verify: ## Run the local checks CI enforces (no Docker or live services needed)
 	cd backend && pytest --cov=app --cov-report=term-missing --cov-fail-under=60
 	cd frontend && npm run lint && npm run typecheck
-	cd frontend && npm test -- --coverage
+	cd frontend && npm run test:coverage
 
 test: test-backend test-frontend ## Run backend and frontend test suites
 
