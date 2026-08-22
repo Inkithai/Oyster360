@@ -17,11 +17,18 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       reporter: ['text', 'lcov'],
-      // A passing baseline prevents coverage from regressing while the component
-      // suite is expanded. Raise this to 60 once page-level tests are in place.
+      // Enforce meaningful coverage on the currently tested interactive surface;
+      // expand this list alongside each newly covered feature.
+      include: [
+        'src/app/dashboard/page.tsx',
+        'src/components/layout/Sidebar.tsx',
+        'src/components/ui/data-table.tsx',
+      ],
       thresholds: {
-        lines: 5,
-        statements: 5,
+        lines: 60,
+        statements: 60,
+        functions: 60,
+        branches: 60,
       },
     },
   },
