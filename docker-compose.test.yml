@@ -1,0 +1,42 @@
+services:
+  postgres-test:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: oyster360_test
+      POSTGRES_PASSWORD: oyster360_test
+      POSTGRES_DB: oyster360_test
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U oyster360_test -d oyster360_test"]
+      interval: 2s
+      timeout: 3s
+      retries: 15
+
+  redis-test:
+    image: redis:7-alpine
+    tmpfs:
+      - /data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      timeout: 3s
+      retries: 15
+
+  test-runner:
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+    depends_on:
+      postgres-test:
+        condition: service_healthy
+      redis-test:
+        condition: service_healthy
+    environment:
+      APP_ENV: test
+      DATABASE_URL: postgresql://oyster360_test:oyster360_test@postgres-test:5432/oyster360_test
+      REDIS_URL: redis://redis-test:6379/0
+      AI_PROVIDER: rule-based
+      STRIPE_SECRET_KEY: ""
+      OPENAI_API_KEY: ""
+      SECRET_KEY: test-only-secret-key-with-at-least-32-characters
