@@ -25,3 +25,9 @@ coverage/
 
 # Logs
 *.log
+
+# Environment files must stay local; use .env.example as the template.
+.env.production
+.env.*.production
+backend/.env.production
+frontend/.env.production

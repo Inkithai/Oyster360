@@ -334,7 +334,7 @@ Oyster360 does **not** require real AI or Stripe credentials for basic local cul
 | Docker Compose | repository-root `.env` | Compose loads this automatically |
 | Native backend | `backend/.env` | Pydantic Settings loads it when the backend runs from `backend/` |
 | Native frontend | `frontend/.env.local` | Next.js loads it for development |
-| Production | platform secrets or an external secrets manager | Do not commit real secrets |
+| Production | platform secrets or an external secrets manager | Never commit `.env.production` or `.env.local` files, even with placeholder values; keep production configuration in your platform secrets manager |
 
 ### Variables
 
@@ -410,7 +410,7 @@ cd backend
 
 python -m venv .venv
 source .venv/bin/activate          # Windows: .venv\Scripts\activate
-pip install -r requirements.txt
+pip install -r requirements.lock
 
 alembic upgrade head
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
@@ -474,13 +474,13 @@ The local backend container applies migrations before starting FastAPI. The prod
 
 ```bash
 cd backend
-pip install -r requirements.txt
+pip install -r requirements.lock
 pytest
 pytest --cov=app --cov-report=term-missing
 flake8 app --count --select=E9,F63,F7,F82 --show-source --statistics
 ```
 
-The backend suite uses an isolated in-memory SQLite database for API, authentication, model-registry, integration, and tenant-security tests.
+The backend suite uses an isolated in-memory SQLite database for API, authentication, model-registry, integration, and tenant-security tests. `pytest` needs no running PostgreSQL, Redis, external account, or manually-created environment file.
 
 ### Frontend
 
