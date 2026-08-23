@@ -1,6 +1,6 @@
 fastapi==0.141.1
 starlette>=1.0.1  # CVE-2026-48710 (BadHost) — transitively pinned via fastapi
-uvicorn[standard]==0.34.3
+uvicorn[standard]==0.52.4
 sqlalchemy==2.0.41
 pydantic[email]==2.11.7
 pydantic-settings==2.9.1
