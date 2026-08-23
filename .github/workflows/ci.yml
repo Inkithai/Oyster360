@@ -94,6 +94,9 @@ jobs:
   security:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    permissions:
+      contents: read
+      security-events: write
     steps:
       - uses: actions/checkout@v4
 
@@ -104,6 +107,24 @@ jobs:
             exit 1
           fi
 
+      - name: Set up Python for dependency resolution
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install backend dependencies (so Trivy resolves the full lockfile)
+        working-directory: backend
+        run: pip install -r requirements.lock
+
+      - name: Set up Node.js for dependency resolution
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install frontend dependencies (so Trivy resolves node_modules)
+        working-directory: frontend
+        run: npm ci
+
       - name: Run filesystem vulnerability scan
         uses: aquasecurity/trivy-action@v0.36.0
         with:
@@ -112,6 +133,13 @@ jobs:
           output: trivy-results.sarif
           severity: HIGH,CRITICAL
           exit-code: "1"
+
+      - name: Upload Trivy scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: trivy-results.sarif
+          category: trivy
 
   deploy:
     runs-on: ubuntu-latest
