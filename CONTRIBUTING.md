@@ -19,7 +19,7 @@ Thank you for improving Oyster360. Keep changes focused, reviewable, and proven 
 
 ## Required checks
 
-Run these before opening a pull request:
+Run these before opening a pull request. `make verify` from the repository root runs the same backend and frontend gates in one command:
 
 ```bash
 cd backend
@@ -27,6 +27,7 @@ python -m venv .venv
 . .venv/bin/activate
 pip install -r requirements.lock
 flake8 app tests --count --select=E9,F63,F7,F82 --show-source --statistics
+pytest -m "not integration"      # seconds-long fast lane
 pytest --cov=app --cov-fail-under=60
 
 cd ../frontend

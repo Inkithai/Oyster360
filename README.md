@@ -236,7 +236,7 @@ Oyster360 is **medium-to-high complexity** for a web application. It is more inv
 - 27 SQLAlchemy model modules
 - 28 backend service modules
 - 28 frontend page routes
-- 13 backend/frontend unit-test files, plus Playwright specifications
+- 22 backend/frontend unit-test files, plus Playwright specifications
 - Up to 7 Docker Compose service roles: frontend, backend, migration, PostgreSQL, Redis, Celery worker, and Celery Beat
 
 ### Architectural trade-off
@@ -246,6 +246,17 @@ The modular-monolith design keeps transactions, development, and deployment unde
 ## Quick Start with Docker
 
 Docker is the recommended setup because it starts the complete service topology and runs migrations automatically.
+
+### One-command bootstrap
+
+From a fresh clone, `scripts/bootstrap.sh` (or `make bootstrap`) performs every setup step below in one shot: it creates `.env` from `.env.example`, generates a random `JWT_SECRET` when the placeholder is still in place, builds and starts the stack (which applies `alembic upgrade head` before the API boots), and waits for the API health check before printing the URLs.
+
+```bash
+./scripts/bootstrap.sh          # or: make bootstrap
+./scripts/bootstrap.sh --seed   # additionally seed demo farm data
+```
+
+The script is idempotent and safe to re-run. `make help` lists the other developer shortcuts (`make verify`, `make test`, `make seed`, `make logs`).
 
 ### Prerequisites
 
@@ -405,7 +416,7 @@ docker compose up -d postgres redis
 ### 2. Configure and run the backend
 
 ```bash
-cp .env.example backend/.env
+cp backend/.env.example backend/.env
 cd backend
 
 python -m venv .venv
@@ -475,12 +486,12 @@ The local backend container applies migrations before starting FastAPI. The prod
 ```bash
 cd backend
 pip install -r requirements.lock
-pytest
-pytest --cov=app --cov-report=term-missing
-flake8 app --count --select=E9,F63,F7,F82 --show-source --statistics
+pytest -m "not integration"                     # fast unit lane, skips end-to-end flows
+pytest --cov=app --cov-report=term-missing       # full suite with coverage
+flake8 app tests --count --select=E9,F63,F7,F82 --show-source --statistics
 ```
 
-The backend suite uses an isolated in-memory SQLite database for API, authentication, model-registry, integration, and tenant-security tests. `pytest` needs no running PostgreSQL, Redis, external account, or manually-created environment file.
+The backend suite uses an isolated in-memory SQLite database for API, authentication, model-registry, integration, and tenant-security tests. `pytest` needs no running PostgreSQL, Redis, external account, or manually-created environment file: `conftest.py` blocks outbound HTTP, stubs every Stripe client call, and builds a fresh schema per test. The end-to-end lifecycle tests in `tests/test_integration.py` are marked `integration`, so `pytest -m "not integration"` gives a seconds-long feedback loop; CI runs that lane first and the compose stack still exercises the full suite.
 
 ### Frontend
 
@@ -501,7 +512,7 @@ npx playwright install chromium
 npm run test:e2e
 ```
 
-The login browser test mocks the API response; dashboard/navigation tests run against the Next.js development server configured by Playwright.
+Every browser spec fulfills its API routes at the network level with `page.route` (login, dashboard analytics), so the Playwright suite runs against the Next.js development server without a live backend or seeded database.
 
 ### Dependency security
 
@@ -540,7 +551,8 @@ Oyster360/
 │   ├── playwright.config.ts
 │   └── vitest.config.ts
 ├── docs/                        # Product, API, setup, architecture, deployment docs
-├── scripts/                     # Deployment and backup scripts
+├── scripts/                     # Bootstrap, deployment, and backup scripts
+├── Makefile                     # Developer shortcuts (make help)
 ├── docker-compose.yml           # Local complete stack
 ├── docker-compose.prod.yml      # Production-oriented stack
 └── .env.example                 # Safe configuration template
