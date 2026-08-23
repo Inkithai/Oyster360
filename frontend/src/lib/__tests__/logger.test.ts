@@ -101,7 +101,7 @@ describe('reportError', () => {
     await reportError(new Error('payment_failed'), { checkout_id: 'cs_1' })
 
     expect(fetchMock).toHaveBeenCalledOnce()
-    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit]
+    const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit]
     expect(url).toBe('https://o1.ingest.sentry.io/api/456/envelope/')
     expect((init.headers as Record<string, string>)['X-Sentry-Auth']).toContain('abc123')
     expect(String(init.body)).toContain('payment_failed')
