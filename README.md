@@ -501,7 +501,7 @@ pytest --cov=app --cov-report=term-missing --cov-fail-under=60       # full suit
 flake8 app tests --count --select=E9,F63,F7,F82 --show-source --statistics
 ```
 
-Backend dependency changes must keep `requirements.lock` reproducible: the lockfile is generated with `pip-compile --no-emit-index-url --strip-extras --output-file=requirements.lock --strip-extras requirements.txt`, CI fails if it drifts from `requirements.txt`, and a fresh `pip install -r requirements.lock` must always succeed.
+Backend dependency changes must keep `requirements.lock` reproducible: the lockfile is generated with `pip-compile --no-emit-index-url --strip-extras --output-file=requirements.lock requirements.txt`, CI fails if it drifts from `requirements.txt`, and a fresh `pip install -r requirements.lock` must always succeed.
 
 The backend suite uses an isolated in-memory SQLite database for API, authentication, model-registry, integration, and tenant-security tests. `pytest` needs no running PostgreSQL, Redis, external account, or manually-created environment file: `conftest.py` blocks outbound HTTP, stubs every Stripe client call, and builds a fresh schema per test. The end-to-end lifecycle tests in `tests/test_integration.py` are marked `integration`, so `pytest -m "not integration"` gives a seconds-long feedback loop; CI runs that lane first and the compose stack still exercises the full suite.
 
