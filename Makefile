@@ -33,6 +33,10 @@ verify: ## Run the local checks CI enforces (no Docker or live services needed)
 
 test: test-backend test-frontend ## Run backend and frontend test suites
 
+test-unit: ## Fast offline lane: backend unit tests + frontend tests, zero external services
+	cd backend && pytest -m "not integration" -q
+	cd frontend && npm test
+
 test-backend: ## Run the full backend suite (in-memory SQLite; no services needed)
 	cd backend && pytest
 
