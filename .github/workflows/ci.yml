@@ -126,15 +126,16 @@ jobs:
         run: npm ci
 
       - name: Run filesystem vulnerability scan
-        uses: aquasecurity/trivy-action@0.36.0
+        # trivy-action tag 0.36.0 does not exist: unprefixed tags were retired
+        # after the March 2026 supply-chain compromise. v0.35.0 is the first
+        # immutable release. Pin to a commit SHA in production.
+        uses: aquasecurity/trivy-action@v0.35.0
         with:
           scan-type: fs
           format: sarif
           output: trivy-results.sarif
           severity: HIGH,CRITICAL
           exit-code: "1"
-          skip-version-check: true
-          version: v0.74.0
 
       - name: Upload Trivy scan results to GitHub Security tab
         uses: github/codeql-action/upload-sarif@v4
