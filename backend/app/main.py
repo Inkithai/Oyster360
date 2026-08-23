@@ -8,6 +8,9 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.core.error_tracking import init_error_tracking
 from app.core.logging import configure_logging, logger
+from app.core.middleware import add_request_id, add_security_headers
+from app.core.rate_limit import rate_limit_middleware
+from app.core.tenant_middleware import TenantMiddleware
 from app.database.database import get_db
 from app.api import (
     auth_router, batches_router, recipes_router, 
@@ -32,7 +35,6 @@ app.add_middleware(
 )
 
 # Register Tenant Middleware
-from app.core.tenant_middleware import TenantMiddleware
 app.add_middleware(TenantMiddleware)
 
 @app.exception_handler(Exception)
@@ -51,60 +53,18 @@ async def global_exception_handler(request: Request, exc: Exception):
     )
 
 @app.middleware("http")
-async def add_security_headers(request: Request, call_next):
-    response = await call_next(request)
-    response.headers["X-Content-Type-Options"] = "nosniff"
-    response.headers["X-Frame-Options"] = "DENY"
-    response.headers["X-XSS-Protection"] = "1; mode=block"
-    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
-    response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
-    response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
-    response.headers["Content-Security-Policy"] = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'"
-    return response
+async def _security_headers(request: Request, call_next):
+    return await add_security_headers(request, call_next)
+
 
 @app.middleware("http")
-async def add_request_id(request: Request, call_next):
-    import uuid
-    request_id = str(uuid.uuid4())
-    request.state.request_id = request_id
-    started_at = time.perf_counter()
-    response = await call_next(request)
-    response.headers["X-Request-ID"] = request_id
-    logger.info(
-        "Request completed",
-        extra={
-            "request_id": request_id,
-            "method": request.method,
-            "path": request.url.path,
-            "status_code": response.status_code,
-            "duration_ms": round((time.perf_counter() - started_at) * 1000, 2),
-        },
-    )
-    return response
+async def _request_id(request: Request, call_next):
+    return await add_request_id(request, call_next)
 
-# Simple in-memory rate limiting
-from collections import defaultdict
-import time
-
-rate_limit_store = defaultdict(list)
 
 @app.middleware("http")
-async def rate_limit_middleware(request: Request, call_next):
-    client_ip = request.client.host if request.client else "unknown"
-    current_time = time.time()
-    
-    # Clean old requests (older than 1 minute)
-    rate_limit_store[client_ip] = [t for t in rate_limit_store[client_ip] if current_time - t < 60]
-    
-    # Check rate limit (100 requests per minute)
-    if len(rate_limit_store[client_ip]) >= 100:
-        return JSONResponse(
-            status_code=429,
-            content={"detail": "Too many requests. Please try again later."}
-        )
-    
-    rate_limit_store[client_ip].append(current_time)
-    return await call_next(request)
+async def _rate_limit(request: Request, call_next):
+    return await rate_limit_middleware(request, call_next)
 
 # Include all routers
 app.include_router(auth_router, prefix="/api/auth", tags=["Authentication"])
