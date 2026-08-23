@@ -4,7 +4,7 @@
 #
 #    pip-compile --no-emit-index-url --output-file=requirements.lock --strip-extras requirements.txt
 #
-alembic==1.16.4
+alembic==1.19.1
     # via -r requirements-runtime.txt
 amqp==5.3.1
     # via kombu
@@ -17,7 +17,7 @@ anyio==4.14.2
     #   httpx
     #   starlette
     #   watchfiles
-argon2-cffi==23.1.0
+argon2-cffi==25.1.0
     # via -r requirements-runtime.txt
 argon2-cffi-bindings==26.1.0
     # via argon2-cffi
@@ -100,22 +100,22 @@ pluggy==1.6.0
     #   pytest-cov
 prompt-toolkit==3.0.53
     # via click-repl
-psycopg==3.2.9
+psycopg==3.3.4
     # via -r requirements-runtime.txt
-psycopg-binary==3.2.9
+psycopg-binary==3.3.4
     # via psycopg
 pycodestyle==2.14.0
     # via flake8
 pycparser==3.0
     # via cffi
-pydantic==2.11.7
+pydantic==2.13.4
     # via
     #   -r requirements-runtime.txt
     #   fastapi
     #   pydantic-settings
-pydantic-core==2.33.2
+pydantic-core==2.46.4
     # via pydantic
-pydantic-settings==2.9.1
+pydantic-settings==2.15.0
     # via -r requirements-runtime.txt
 pyflakes==3.4.0
     # via flake8
@@ -137,7 +137,7 @@ python-dotenv==1.2.3
     # via
     #   pydantic-settings
     #   uvicorn
-python-multipart==0.0.20
+python-multipart==0.0.32
     # via -r requirements-runtime.txt
 pyyaml==6.0.3
     # via uvicorn
@@ -188,7 +188,7 @@ urllib3==2.7.0
     # via
     #   requests
     #   sentry-sdk
-uvicorn==0.34.3
+uvicorn==0.52.4
     # via -r requirements-runtime.txt
 uvloop==0.22.1
     # via uvicorn
