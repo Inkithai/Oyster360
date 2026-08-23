@@ -18,10 +18,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.12"
           cache: pip
@@ -47,12 +47,12 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
-          node-version: "20"
+          node-version: "22"
           cache: npm
           cache-dependency-path: frontend/package-lock.json
 
@@ -81,7 +81,7 @@ jobs:
     timeout-minutes: 30
     needs: [backend, frontend]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Validate production Compose configuration
         run: docker compose config --quiet
@@ -98,7 +98,7 @@ jobs:
       contents: read
       security-events: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Block committed environment files
         run: |
@@ -108,7 +108,7 @@ jobs:
           fi
 
       - name: Set up Python for dependency resolution
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.12"
 
@@ -117,25 +117,27 @@ jobs:
         run: pip install -r requirements.lock
 
       - name: Set up Node.js for dependency resolution
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
-          node-version: "20"
+          node-version: "22"
 
       - name: Install frontend dependencies (so Trivy resolves node_modules)
         working-directory: frontend
         run: npm ci
 
       - name: Run filesystem vulnerability scan
-        uses: aquasecurity/trivy-action@v0.36.0
+        uses: aquasecurity/trivy-action@0.36.0
         with:
           scan-type: fs
           format: sarif
           output: trivy-results.sarif
           severity: HIGH,CRITICAL
           exit-code: "1"
+          skip-version-check: true
+          version: v0.74.0
 
       - name: Upload Trivy scan results to GitHub Security tab
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         if: always()
         with:
           sarif_file: trivy-results.sarif
