@@ -606,9 +606,10 @@ To intentionally refresh the backend lock in a clean virtual environment:
 cd backend
 python -m venv .lock-venv
 . .lock-venv/bin/activate
-python -m pip install --upgrade pip
-pip install -r requirements.txt
-pip freeze --exclude-editable > requirements.lock
+python -m pip install --upgrade pip pip-tools
+pip-compile --no-emit-index-url --strip-extras \
+  --output-file=requirements.lock requirements.txt
+pip install -r requirements.lock
 pytest
 ```
 

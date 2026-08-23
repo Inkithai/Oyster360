@@ -17,17 +17,20 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       reporter: ['text', 'lcov'],
-      // Enforce meaningful coverage on the currently tested interactive surface;
-      // expand this list alongside each newly covered feature.
+      // Coverage is deliberately scoped to the interactive production surface
+      // that has behavior tests. Add a source file here together with its test.
       include: [
+        'src/app/batches/page.tsx',
         'src/app/dashboard/page.tsx',
+        'src/app/inventory/page.tsx',
+        'src/components/batches/ActiveBatchesTable.tsx',
         'src/components/layout/Sidebar.tsx',
         'src/components/ui/data-table.tsx',
       ],
       thresholds: {
-        lines: 60,
-        statements: 60,
-        functions: 60,
+        lines: 70,
+        statements: 70,
+        functions: 70,
         branches: 60,
       },
     },
