@@ -12,9 +12,11 @@ Thank you for improving Oyster360. Keep changes focused, reviewable, and proven 
 ## Change discipline
 
 - Use Conventional Commits (`feat:`, `fix:`, `test:`, `docs:`, `refactor:`, `chore:`).
-- Keep one concern per commit. Put the behavior change and the tests proving it in the same commit.
+- Keep one concern per commit. Put the behavior change under `backend/app` or `frontend/src` and the tests proving it in the same commit.
+- Prefer small pull requests. Open an issue first for anything larger than a focused fix so other contributors can pick it up.
 - Do not combine mass formatting, generated files, and feature work.
 - Add a changelog entry under `Unreleased` for user-visible changes.
+- New contributors: look for issues labeled `good first issue`.
 
 ### Generated migration policy
 
@@ -38,7 +40,7 @@ cd ../frontend
 npm ci
 npm run lint
 npm run typecheck
-npm test -- --coverage
+npm run test:coverage
 npm run build
 ```
 
@@ -57,6 +59,18 @@ docker compose -f docker-compose.test.yml down --volumes
 - Assert externally visible behavior rather than implementation details.
 - Every bug fix should include a regression test.
 - Do not lower a coverage threshold to make a change pass.
+
+## Reviewers
+
+`.github/CODEOWNERS` requests `@Inkithai` only for application code (`backend/app/`, `backend/tests/`, `frontend/src/`) and `.github/workflows/`.
+
+Docs-only pull requests have **no required GitHub code owner**. Any core maintainer listed in [AUTHORS.md](AUTHORS.md) may review and approve changes that stay inside:
+
+- `docs/`
+- root markdown (`README.md`, `CONTRIBUTING.md`, `CHANGELOG.md`, `SECURITY.md`, `SUPPORT.md`, `AUTHORS.md`, `CODE_OF_CONDUCT.md`)
+- `.github/ISSUE_TEMPLATE/`, `.github/PULL_REQUEST_TEMPLATE.md`, and `.github/CODEOWNERS`
+
+Do not mix a docs-only review with application source. If a PR touches `backend/app/`, `backend/tests/`, `frontend/src/`, or workflows, `@Inkithai` remains the requested reviewer.
 
 ## Pull requests
 

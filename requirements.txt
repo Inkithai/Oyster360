@@ -1,0 +1,3 @@
+# Root pip manifest. Mirrors backend/requirements.txt so installers that
+# only look at the repository root still resolve direct + test dependencies.
+-r backend/requirements.txt

@@ -1,0 +1,26 @@
+name: Feature request
+description: Propose a small, testable improvement
+title: "[feat] "
+labels: ["enhancement", "good first issue"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What farm operator pain does this solve?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposal
+      description: Keep it small enough for one PR that pairs source + tests.
+    validations:
+      required: true
+  - type: checkboxes
+    id: scope
+    attributes:
+      label: Scope check
+      options:
+        - label: I can implement this as a focused Conventional Commit with tests
+        - label: This does not require a secrets or schema redesign
