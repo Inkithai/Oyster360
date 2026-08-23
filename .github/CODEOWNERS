@@ -1,8 +1,19 @@
-# Review routing. Default reviewers for anything not listed below.
-*       @Inkithai
+# Review routing.
+#
+# GitHub only accepts @username owners. Application code and workflows stay
+# with @Inkithai. Documentation has no required GitHub owner so any core
+# maintainer listed in /AUTHORS.md can review a docs-only pull request.
+# See CONTRIBUTING.md → "Reviewers".
 
-/.github/                @Inkithai
-/backend/app/            @Inkithai
-/backend/tests/          @Inkithai
-/frontend/src/           @Inkithai
-/docs/                   @Inkithai
+# Product code and automated checks.
+/backend/app/              @Inkithai
+/backend/tests/            @Inkithai
+/frontend/src/             @Inkithai
+/.github/workflows/        @Inkithai
+
+# Intentionally unowned (any AUTHORS.md maintainer may review):
+#   /docs/**
+#   root *.md (README, CONTRIBUTING, CHANGELOG, SECURITY, SUPPORT, AUTHORS, CODE_OF_CONDUCT)
+#   /.github/ISSUE_TEMPLATE/**
+#   /.github/PULL_REQUEST_TEMPLATE.md
+#   /.github/CODEOWNERS
