@@ -1,6 +1,5 @@
 from datetime import datetime, timedelta
-import random
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Tuple
 
 from sqlalchemy import func
 from sqlalchemy.orm import Session
@@ -13,11 +12,104 @@ from app.models.strain import Strain
 from app.models.yield_prediction import YieldPrediction
 from app.services.cache_service import cache
 
+# Agronomic reference values for oyster mushroom cultivation. Every constant is
+# only a fallback: as soon as a tenant records its own harvests, strain
+# metadata, or environment logs, those real values take over.
+BASE_YIELD_KG_PER_BAG = 0.75
+DEFAULT_BAG_COUNT = 500
+DEFAULT_CYCLE_DAYS = 28
+OPTIMAL_TEMPERATURE_C = (20.0, 24.0)
+OPTIMAL_HUMIDITY_PCT = (85.0, 93.0)
+TEMPERATURE_PENALTY_PER_DEGREE = 0.01
+HUMIDITY_PENALTY_PER_PERCENT = 0.005
+ENVIRONMENT_FACTOR_BOUNDS = (0.85, 1.15)
+ENVIRONMENT_LOOKBACK_DAYS = 30
+MIN_CONFIDENCE = 50.0
+MAX_CONFIDENCE = 95.0
+MODEL_VERSION = "v2-data-driven"
+
 
 class AnalyticsService:
     def __init__(self, db: Session):
         self.db = db
         self.cache = cache
+
+    def _harvest_totals_by_batch(
+        self, organization_id: int, strain_id: int = None
+    ) -> Dict[int, float]:
+        """Total harvested kg per batch, tenant-scoped and optionally strain-scoped.
+
+        Real aggregation over the Harvest table so downstream metrics are
+        derived from recorded production data instead of pseudo-random values.
+        """
+        query = (
+            self.db.query(Harvest.batch_id, func.sum(Harvest.quantity_kg))
+            .join(Batch, Harvest.batch_id == Batch.id)
+            .filter(
+                Batch.organization_id == organization_id,
+                Harvest.quantity_kg.isnot(None),
+            )
+        )
+        if strain_id is not None:
+            query = query.filter(Batch.strain_id == strain_id)
+        rows = query.group_by(Harvest.batch_id).all()
+        return {batch_id: float(total or 0) for batch_id, total in rows}
+
+    def _environmental_factor(self, organization_id: int) -> Tuple[float, bool]:
+        """Score recent room conditions against the optimal oyster band.
+
+        Returns ``(factor, has_environment_data)`` where ``factor`` shrinks by
+        1% per degree Celsius and 0.5% per %RH outside the optimal range, and
+        stays clamped to a bounded corridor so it can never dominate history.
+        """
+        logs = (
+            self.db.query(EnvironmentLog)
+            .filter(EnvironmentLog.organization_id == organization_id)
+            .order_by(EnvironmentLog.recorded_at.desc())
+            .limit(ENVIRONMENT_LOOKBACK_DAYS)
+            .all()
+        )
+        temperatures = [log.temperature for log in logs if log.temperature is not None]
+        humidities = [log.humidity for log in logs if log.humidity is not None]
+        if not temperatures and not humidities:
+            return 1.0, False
+
+        factor = 1.0
+        temp_low, temp_high = OPTIMAL_TEMPERATURE_C
+        humidity_low, humidity_high = OPTIMAL_HUMIDITY_PCT
+        if temperatures:
+            mean_temperature = sum(temperatures) / len(temperatures)
+            deviation = max(
+                temp_low - mean_temperature, mean_temperature - temp_high, 0.0
+            )
+            factor -= TEMPERATURE_PENALTY_PER_DEGREE * deviation
+        if humidities:
+            mean_humidity = sum(humidities) / len(humidities)
+            deviation = max(
+                humidity_low - mean_humidity, mean_humidity - humidity_high, 0.0
+            )
+            factor -= HUMIDITY_PENALTY_PER_PERCENT * deviation
+
+        lower, upper = ENVIRONMENT_FACTOR_BOUNDS
+        return round(max(lower, min(upper, factor)), 4), True
+
+    def _confidence_score(
+        self, historical_batch_count: int, has_environment_data: bool
+    ) -> float:
+        """Confidence grows with the amount of real tenant data behind the estimate."""
+        confidence = 55.0 + 4.0 * historical_batch_count
+        confidence += 5.0 if has_environment_data else -5.0
+        return round(max(MIN_CONFIDENCE, min(MAX_CONFIDENCE, confidence)), 1)
+
+    def _days_to_harvest(self, batch: Batch, strain: Strain) -> int:
+        if strain and strain.colonization_days and strain.fruiting_days:
+            cycle_days = strain.colonization_days + strain.fruiting_days
+        else:
+            cycle_days = DEFAULT_CYCLE_DAYS
+        if batch.start_date:
+            elapsed_days = max((datetime.utcnow() - batch.start_date).days, 0)
+            return max(1, cycle_days - elapsed_days)
+        return max(1, cycle_days)
 
     def predict_yield_for_batch(
         self,
@@ -32,28 +124,33 @@ class AnalyticsService:
             return {"error": "Batch not found"}
 
         strain = self.db.query(Strain).filter(Strain.id == batch.strain_id).first()
-        base_yield = 0.75
-        strain_factor = 1.05 if strain and "Pearl" in strain.name else 1.0
-        recipe_factor = 1.08
-        environmental_factor = random.uniform(0.92, 1.12)
 
-        predicted_yield = round(
-            base_yield
-            * strain_factor
-            * recipe_factor
-            * environmental_factor
-            * 500,
-            1,
+        # Base the estimate on the tenant's own recorded production for this
+        # strain; fall back to per-bag agronomy only when no history exists.
+        historical_totals = self._harvest_totals_by_batch(
+            organization_id, batch.strain_id
         )
-        confidence = round(random.uniform(76, 93), 1)
-        days_to_harvest = random.randint(8, 18)
+        if historical_totals:
+            base_yield = sum(historical_totals.values()) / len(historical_totals)
+        else:
+            bag_count = len(batch.grow_bags) or DEFAULT_BAG_COUNT
+            base_yield = BASE_YIELD_KG_PER_BAG * bag_count
+
+        environmental_factor, has_environment_data = self._environmental_factor(
+            organization_id
+        )
+        predicted_yield = round(base_yield * environmental_factor, 1)
+        confidence = self._confidence_score(
+            len(historical_totals), has_environment_data
+        )
+        days_to_harvest = self._days_to_harvest(batch, strain)
 
         prediction = YieldPrediction(
             batch_id=batch_id,
             predicted_yield_kg=predicted_yield,
             confidence_score=confidence,
             expected_harvest_date=datetime.utcnow() + timedelta(days=days_to_harvest),
-            model_version="v1-rule-based",
+            model_version=MODEL_VERSION,
             created_at=datetime.utcnow(),
         )
         self.db.add(prediction)
