@@ -1,6 +1,6 @@
 """Verified, idempotent Stripe webhook handlers."""
 
-from datetime import datetime
+from datetime import datetime, timezone
 import os
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -12,11 +12,18 @@ from app.models.organization import Organization
 from app.services.billing_service import BillingService
 
 router = APIRouter()
-stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
+
+
+def _stripe_api_key() -> str | None:
+    """Resolve the Stripe key lazily instead of mutating global state at import."""
+    return os.getenv("STRIPE_SECRET_KEY")
 
 
 def _timestamp(value) -> datetime | None:
-    return datetime.utcfromtimestamp(value) if value else None
+    """Convert a Unix timestamp to a naive UTC datetime (DB columns are naive)."""
+    if not value:
+        return None
+    return datetime.fromtimestamp(value, tz=timezone.utc).replace(tzinfo=None)
 
 
 def _organization_id(metadata: dict, db: Session) -> int:
@@ -46,6 +53,8 @@ async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
         raise HTTPException(status_code=503, detail="Stripe webhooks are not configured")
     if not signature:
         raise HTTPException(status_code=400, detail="Missing Stripe signature")
+
+    stripe.api_key = _stripe_api_key()
 
     try:
         event = stripe.Webhook.construct_event(payload, signature, webhook_secret)

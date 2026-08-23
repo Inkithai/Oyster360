@@ -2,12 +2,22 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { analytics, apiRequest, auth } from '../api'
 
-function mockResponse(body: unknown, init: { ok?: boolean; status?: number } = {}): Response {
+function mockResponse(
+  body: unknown,
+  init: { ok?: boolean; status?: number; requestId?: string } = {},
+): Response {
   const ok = init.ok ?? true
   const status = init.status ?? 200
+  const headers = new Map<string, string>()
+  if (init.requestId) {
+    headers.set('X-Request-ID', init.requestId)
+  }
   return {
     ok,
     status,
+    headers: {
+      get: (name: string) => headers.get(name) ?? null,
+    },
     json: async () => body,
   } as unknown as Response
 }
@@ -52,6 +62,24 @@ describe('apiRequest', () => {
       mockResponse({ detail: 'Unauthorized' }, { ok: false, status: 401 })
     ) as unknown as typeof fetch
     await expect(apiRequest('/api/secret')).rejects.toThrow('Unauthorized')
+  })
+
+  it('logs failed requests with the backend request ID for correlation', async () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    global.fetch = vi.fn<FetchImpl>(async () =>
+      mockResponse({ detail: 'nope' }, { ok: false, status: 403, requestId: 'req-123' })
+    ) as unknown as typeof fetch
+
+    await expect(apiRequest('/api/secret')).rejects.toThrow('nope')
+
+    expect(warnSpy).toHaveBeenCalledOnce()
+    const raw = warnSpy.mock.calls[0][1] as string
+    expect(JSON.parse(raw)).toMatchObject({
+      event: 'api_request_failed',
+      endpoint: '/api/secret',
+      status: 403,
+      request_id: 'req-123',
+    })
   })
 
   it('returns null for 204 No Content', async () => {

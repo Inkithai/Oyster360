@@ -1,3 +1,5 @@
+import { logger } from '@/lib/logger'
+
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '')
 
 export async function apiRequest(endpoint: string, options: RequestInit = {}) {
@@ -13,6 +15,13 @@ export async function apiRequest(endpoint: string, options: RequestInit = {}) {
   })
 
   if (!res.ok) {
+    // Structured log with the backend request ID for end-to-end correlation.
+    logger.warn('api_request_failed', {
+      endpoint,
+      method: options.method ?? 'GET',
+      status: res.status,
+      request_id: res.headers?.get?.('X-Request-ID') ?? undefined,
+    })
     const error = await res.json().catch(() => ({}))
     throw new Error(error.detail || `API Error: ${res.status}`)
   }
@@ -23,6 +32,8 @@ export async function apiRequest(endpoint: string, options: RequestInit = {}) {
 
   return res.json()
 }
+
+export { API_BASE }
 
 // Auth
 export const auth = {
