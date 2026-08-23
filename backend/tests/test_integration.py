@@ -10,6 +10,10 @@ from app.models.organization import Organization, OrganizationMember
 from app.models.batch import Batch
 from datetime import datetime
 
+# End-to-end lifecycle flows. CI runs these in the dedicated docker-integration
+# job; the fast unit lane excludes them with `pytest -m "not integration"`.
+pytestmark = pytest.mark.integration
+
 @pytest.fixture
 def test_organization(db_session):
     """Create test organization"""
