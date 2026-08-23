@@ -137,7 +137,7 @@ python-dotenv==1.2.3
     # via
     #   pydantic-settings
     #   uvicorn
-python-multipart==0.0.20
+python-multipart==0.0.32
     # via -r requirements-runtime.txt
 pyyaml==6.0.3
     # via uvicorn
