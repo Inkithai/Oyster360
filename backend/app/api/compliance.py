@@ -10,7 +10,7 @@ from app.models.user import User
 from app.models.organization import Organization, OrganizationMember
 from app.models.batch import Batch
 from app.models.harvest import Harvest
-from datetime import datetime
+from datetime import datetime, timezone
 import json
 
 router = APIRouter()
@@ -82,7 +82,7 @@ def export_user_data(
         })
     
     return {
-        "export_date": datetime.utcnow().isoformat(),
+        "export_date": datetime.now(timezone.utc).isoformat(),
         "data": user_data
     }
 
