@@ -1,6 +1,6 @@
 # Oyster360 developer shortcuts. The same commands live in README.md; run
 # `make help` to list targets.
-.PHONY: help bootstrap up down logs ps migrate seed verify test test-backend test-frontend test-e2e lint
+.PHONY: help bootstrap up down logs ps migrate seed verify test test-unit test-all test-backend test-frontend test-e2e lint
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-18s\033[0m %s\n", $$1, $$2}'
@@ -36,6 +36,12 @@ test: test-backend test-frontend ## Run backend and frontend test suites
 test-unit: ## Fast offline lane: backend unit tests + frontend tests, zero external services
 	cd backend && pytest -m "not integration" -q
 	cd frontend && npm test
+
+test-all: ## Everything CI runs: offline unit lanes, then integration tests on the compose stack
+	cd backend && pytest -m "not integration" -q
+	cd frontend && npm test
+	docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test-runner
+	@echo "All suites passed: backend unit, frontend unit, docker integration."
 
 test-backend: ## Run the full backend suite (in-memory SQLite; no services needed)
 	cd backend && pytest

@@ -481,15 +481,27 @@ The local backend container applies migrations before starting FastAPI. The prod
 
 ## Testing and Quality Checks
 
+### One command from a fresh clone
+
+```bash
+make test-unit     # backend unit lane + frontend unit tests, zero external services
+make verify        # everything CI enforces except the compose stack: backend coverage gate, frontend lint/typecheck/tests+coverage
+make test-all      # test-unit, then the full suite incl. integration tests on the docker-compose.test.yml stack
+```
+
+`make test-all` is the documented entry point for contributors: it runs the fast backend unit lane (`pytest -m "not integration"`), the frontend Vitest suite, and finally `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test-runner`, which spins up isolated PostgreSQL and Redis containers and executes the entire backend suite including the integration-marked lifecycle tests. No live Stripe or OpenAI credentials are ever required: `conftest.py` stubs every Stripe client call and blocks outbound HTTP, and the compose stack passes empty `STRIPE_SECRET_KEY`/`OPENAI_API_KEY` values.
+
 ### Backend
 
 ```bash
 cd backend
 pip install -r requirements.lock
 pytest -m "not integration"                     # fast unit lane, skips end-to-end flows
-pytest --cov=app --cov-report=term-missing       # full suite with coverage
+pytest --cov=app --cov-report=term-missing --cov-fail-under=60       # full suite with enforced coverage gate
 flake8 app tests --count --select=E9,F63,F7,F82 --show-source --statistics
 ```
+
+Backend dependency changes must keep `requirements.lock` reproducible: the lockfile is generated with `pip-compile --no-emit-index-url --strip-extras --output-file=requirements.lock --strip-extras requirements.txt`, CI fails if it drifts from `requirements.txt`, and a fresh `pip install -r requirements.lock` must always succeed.
 
 The backend suite uses an isolated in-memory SQLite database for API, authentication, model-registry, integration, and tenant-security tests. `pytest` needs no running PostgreSQL, Redis, external account, or manually-created environment file: `conftest.py` blocks outbound HTTP, stubs every Stripe client call, and builds a fresh schema per test. The end-to-end lifecycle tests in `tests/test_integration.py` are marked `integration`, so `pytest -m "not integration"` gives a seconds-long feedback loop; CI runs that lane first and the compose stack still exercises the full suite.
 
@@ -497,12 +509,14 @@ The backend suite uses an isolated in-memory SQLite database for API, authentica
 
 ```bash
 cd frontend
-npm ci
+npm ci                     # installs exactly the committed package-lock.json
 npm run lint
-npm test
-npm test -- --coverage
+npm run typecheck
+npm test -- --coverage     # vitest unit suite; fails below the 60% coverage gate
 npm run build
 ```
+
+The coverage gate lives in `vitest.config.ts` (`coverage.thresholds`) and applies to the tracked interactive surfaces listed there (pages, shared components, and the observability modules); grow the list whenever a new surface gains tests.
 
 ### Browser tests
 
@@ -520,6 +534,13 @@ Every browser spec fulfills its API routes at the network level with `page.route
 cd frontend
 npm audit --audit-level=high
 ```
+
+### Observability
+
+Both tiers emit structured, request-correlated telemetry:
+
+- **Backend**: JSON log lines with `request_id` and `duration_ms` on every request (`app/core/middleware.py`), a `/health`, `/ready`, and `/live` operations endpoint set, and optional Sentry initialization via `SENTRY_DSN` (`app/core/error_tracking.py`).
+- **Frontend**: `src/lib/logger.ts` emits structured JSON log entries with levels, and the API client tags failed requests with the backend `X-Request-ID` for end-to-end correlation. The `ErrorBoundary` mounted in `Providers` catches render crashes, reports them through the logger, and offers a reload fallback. Setting `NEXT_PUBLIC_SENTRY_DSN` (optional) forwards client errors to a Sentry-compatible envelope endpoint; with it blank, the logger stays offline and console-only.
 
 ## Project Structure
 

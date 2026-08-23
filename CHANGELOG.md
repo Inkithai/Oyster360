@@ -5,6 +5,21 @@ All notable changes to Oyster360 are documented here. This project follows [Keep
 ## [Unreleased]
 
 ### Added
+- Structured frontend logging (`src/lib/logger.ts`) with levels and `X-Request-ID` correlation, optional Sentry-compatible client error reporting via `NEXT_PUBLIC_SENTRY_DSN`, and a reporting `ErrorBoundary` mounted in providers.
+- GDPR compliance API tests (export + deletion) and verified Stripe webhook API tests, including signature verification, metadata validation, and every handled event type.
+- Unit tests for the pure analytics math in `analytics_calculations`, plus page specs for forgot-password, strains, and settings/subscription; the vitest coverage gate now tracks all eight covered surfaces at 60%.
+- `make test-all` target documented in the README: offline unit lanes followed by the full integration suite on `docker-compose.test.yml`.
+- Shared HTTP middleware tests (security headers, request IDs) and app-wide rate-limiter middleware tests.
+
+### Changed
+- `app.main` no longer defines middleware inline: security headers and request IDs live in `app/core/middleware.py`, and the app-wide rate limiter shares the sliding-window store in `app/core/rate_limit.py`.
+- `AnalyticsService` delegates its agronomy math to database-free helpers in `app/services/analytics_calculations.py`.
+- CI now fails when `backend/requirements.lock` drifts from `requirements.txt` (pip-compile reproducibility check) and documents the lockfile policy in the README.
+
+### Fixed
+- Stripe webhook router no longer mutates `stripe.api_key` at import time; the key is resolved per request.
+- Deprecated `datetime.utcfromtimestamp`/naive `utcnow` usage replaced in webhook timestamps and GDPR export payloads.
+- Forgot-password email label is programmatically associated with its input (screen-reader/a11y fix).
 - Isolated Docker Compose test stack with ephemeral PostgreSQL and Redis.
 - Frontend dashboard and data-table interaction tests with a 60% coverage gate.
 - Explicit TypeScript typecheck in local scripts and CI.
