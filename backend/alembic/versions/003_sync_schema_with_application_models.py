@@ -1,5 +1,11 @@
 """sync schema with application models
 
+# NOTE (generated artifact): this file is produced by `alembic revision
+# --autogenerate` and intentionally exceeds the 500 LOC hand-written file limit
+# applied to backend/app and frontend/src. It is excluded from the code
+# cleanliness gate (see .github/workflows/ci.yml and the project lint config);
+# do not hand-edit table bodies here — regenerate from the models instead.
+
 Revision ID: 003
 Revises: 002
 Create Date: 2026-08-12 00:53:19.053525

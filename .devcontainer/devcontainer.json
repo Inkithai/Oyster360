@@ -1,0 +1,31 @@
+// Dev container for Oyster360 — opens the full monorepo (FastAPI backend +
+// Next.js frontend) in GitHub Codespaces / VS Code Dev Containers with the
+// toolchain pre-installed. See docs/SETUP.md for local setup without it.
+{
+  "name": "Oyster360",
+  "image": "mcr.microsoft.com/devcontainers/python:3.12",
+  "features": {
+    "ghcr.io/devcontainers/features/node:1": { "version": "22" },
+    "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {}
+  },
+  "forwardPorts": [8000, 3000],
+  "postCreateCommand": "pip install -r backend/requirements.lock && cd frontend && npm ci",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "ms-python.flake8",
+        "dbaeumer.vscode-eslint",
+        "bradlc.vscode-tailwindcss"
+      ],
+      "settings": {
+        "python.defaultInterpreterPath": "/usr/local/python/current/bin/python",
+        "python.testing.pytestEnabled": true,
+        "editor.formatOnSave": true
+      }
+    }
+  },
+  "remoteEnv": {
+    "APP_ENV": "development"
+  }
+}
