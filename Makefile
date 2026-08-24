@@ -1,12 +1,26 @@
 # Oyster360 developer shortcuts. The same commands live in README.md; run
 # `make help` to list targets.
-.PHONY: help bootstrap up down logs ps migrate seed verify test test-backend test-frontend test-e2e lint
+.PHONY: help bootstrap fresh-start up down logs ps migrate seed verify test test-backend test-frontend test-e2e lint
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-18s\033[0m %s\n", $$1, $$2}'
 
 bootstrap: ## Fresh clone -> running app (env, build, migrate, start; --seed supported)
 	./scripts/bootstrap.sh
+
+fresh-start: ## Never-seen-the-repo path: .env, databases, migrations, API + web
+	@test -f .env || cp .env.example .env
+	docker compose up -d postgres redis
+	docker compose up -d --wait postgres redis || sleep 10
+	docker compose build backend
+	docker compose run --rm --no-deps backend alembic upgrade head
+	docker compose up -d backend frontend
+	@echo
+	@echo "Databases migrated; backend and frontend are starting."
+	@echo "Expected backend log line:  Uvicorn running on 0.0.0.0:8000"
+	@echo "Frontend:  http://localhost:3000"
+	@echo "Health:    http://localhost:8000/health"
+	@echo "Follow logs: docker compose logs -f backend frontend"
 
 up: ## Start the full stack in the background
 	docker compose up -d
