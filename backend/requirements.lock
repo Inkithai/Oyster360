@@ -135,7 +135,7 @@ python-dotenv==1.2.3
     # via
     #   pydantic-settings
     #   uvicorn
-python-json-logger==2.0.7
+python-json-logger==4.2.0
     # via -r requirements-runtime.txt
 python-multipart==0.0.32
     # via -r requirements-runtime.txt
