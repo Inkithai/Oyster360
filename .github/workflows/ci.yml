@@ -168,23 +168,14 @@ jobs:
             fi
           fi
 
-      - name: Fail if backend/requirements.lock is out of sync with requirements.txt
-        working-directory: backend
+      - name: Verify backend requirements lockfile
         run: |
-          pip install pip-tools
-          pip-compile --no-emit-index-url --strip-extras \
-            --output-file=requirements.lock requirements.txt
-          if ! git diff --exit-code -- requirements.lock; then
-            if [ "$IS_DEPENDABOT" = "true" ]; then
-              echo "::notice::requirements.lock regenerated to match the Dependabot bump; it will be committed to the PR branch."
-            else
-              echo "::error::backend/requirements.lock does not match requirements.txt."
-              echo "Regenerate it with:"
-              echo "  cd backend && pip-compile --no-emit-index-url --strip-extras \\"
-              echo "    --output-file=requirements.lock requirements.txt"
-              exit 1
-            fi
-          fi
+          pip install uv
+          uv pip compile pyproject.toml --output-file backend/requirements.lock
+          git diff --exit-code -- backend/requirements.lock || {
+            echo "::error::backend/requirements.lock is out of date with pyproject.toml."
+            exit 1
+          }
 
       - name: Commit regenerated lockfiles to the Dependabot branch
         if: >-
