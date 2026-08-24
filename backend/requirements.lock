@@ -161,7 +161,7 @@ starlette==1.6.0
     # via
     #   -r requirements-runtime.txt
     #   fastapi
-stripe==15.5.0
+stripe==15.5.1
     # via -r requirements-runtime.txt
 typing-extensions==4.16.0
     # via
