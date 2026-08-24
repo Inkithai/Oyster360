@@ -4,6 +4,13 @@ All notable changes to Oyster360 are documented here. This project follows [Keep
 
 ## [Unreleased]
 
+### Added
+- `make fresh-start` one-command path for a machine that has never seen the repo: copies `.env.example` to `.env`, starts PostgreSQL and Redis, applies `alembic upgrade head`, and brings up the backend and frontend.
+- Quick Start documentation for `make fresh-start` and the expected backend log line `Uvicorn running on 0.0.0.0:8000`.
+
+### Changed
+- Maintainer roster lists ten people so each feature or fix can land as its own pull request with a named reviewer (see `AUTHORS.md` and `CONTRIBUTING.md`).
+
 ## [1.1.0] - 2026-08-24
 
 ### Added
@@ -96,7 +103,8 @@ All notable changes to Oyster360 are documented here. This project follows [Keep
 ### Added
 - Initial repository, Docker Compose topology, backend configuration, and product docs.
 
-[Unreleased]: https://github.com/Inkithai/Oyster360/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/Inkithai/Oyster360/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/Inkithai/Oyster360/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/Inkithai/Oyster360/compare/v0.9.0...v1.0.0
 [0.9.0]: https://github.com/Inkithai/Oyster360/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/Inkithai/Oyster360/compare/v0.7.0...v0.8.0
