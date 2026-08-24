@@ -82,29 +82,11 @@ async def add_request_id(request: Request, call_next):
     )
     return response
 
-# Simple in-memory rate limiting
-from collections import defaultdict
 import time
+from app.core.rate_limit import create_rate_limit_middleware
 
-rate_limit_store = defaultdict(list)
-
-@app.middleware("http")
-async def rate_limit_middleware(request: Request, call_next):
-    client_ip = request.client.host if request.client else "unknown"
-    current_time = time.time()
-    
-    # Clean old requests (older than 1 minute)
-    rate_limit_store[client_ip] = [t for t in rate_limit_store[client_ip] if current_time - t < 60]
-    
-    # Check rate limit (100 requests per minute)
-    if len(rate_limit_store[client_ip]) >= 100:
-        return JSONResponse(
-            status_code=429,
-            content={"detail": "Too many requests. Please try again later."}
-        )
-    
-    rate_limit_store[client_ip].append(current_time)
-    return await call_next(request)
+# Shared Redis sliding-window limiter works consistently across workers and containers.
+app.middleware("http")(create_rate_limit_middleware(max_requests=100, window_seconds=60))
 
 # Include all routers
 app.include_router(auth_router, prefix="/api/auth", tags=["Authentication"])

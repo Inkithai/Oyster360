@@ -1,49 +1,27 @@
-"""Tests for the in-memory rate limiter (app.core.rate_limit)."""
-import pytest
-from fastapi import HTTPException
+"""Tests for the Redis-backed sliding-window limiter."""
+from unittest.mock import AsyncMock
 
-from app.core import rate_limit
-
-
-class _FakeRequest:
-    def __init__(self, host="1.2.3.4"):
-        # Mirror the attribute the decorator reads (request.client.host).
-        self.client = type("C", (), {"host": host})()
+from app.core.rate_limit import RedisRateLimiter
 
 
-@pytest.fixture(autouse=True)
-def _reset_counts():
-    rate_limit.request_counts.clear()
-    yield
-    rate_limit.request_counts.clear()
-
-
-async def _handler(request):
-    return "ok"
-
-
-def test_allows_requests_under_limit():
-    limiter = rate_limit.rate_limit(max_requests=3, window_seconds=60)(_handler)
+def test_blocks_request_after_window_is_full():
     import asyncio
-    for _ in range(3):
-        assert asyncio.get_event_loop().run_until_complete(limiter(_FakeRequest())) == "ok"
+    limiter = RedisRateLimiter(max_requests=2)
+    limiter.client.eval = AsyncMock(side_effect=[1, 1, 0])
+
+    assert asyncio.run(limiter.allowed("1.2.3.4"))
+    assert asyncio.run(limiter.allowed("1.2.3.4"))
+    assert not asyncio.run(limiter.allowed("1.2.3.4"))
+    assert limiter.client.eval.await_count == 3
 
 
-def test_blocks_requests_over_limit():
-    limiter = rate_limit.rate_limit(max_requests=2, window_seconds=60)(_handler)
+def test_redis_script_uses_isolated_client_key():
     import asyncio
-    loop = asyncio.new_event_loop()
-    loop.run_until_complete(limiter(_FakeRequest()))
-    loop.run_until_complete(limiter(_FakeRequest()))
-    with pytest.raises(HTTPException) as exc:
-        loop.run_until_complete(limiter(_FakeRequest()))
-    assert exc.value.status_code == 429
+    limiter = RedisRateLimiter(max_requests=1)
+    limiter.client.eval = AsyncMock(return_value=1)
 
+    asyncio.run(limiter.allowed("10.0.0.1"))
+    asyncio.run(limiter.allowed("10.0.0.2"))
 
-def test_rate_limit_is_per_client():
-    limiter = rate_limit.rate_limit(max_requests=1, window_seconds=60)(_handler)
-    import asyncio
-    loop = asyncio.new_event_loop()
-    loop.run_until_complete(limiter(_FakeRequest("10.0.0.1")))  # ok
-    # Different client gets its own bucket.
-    assert loop.run_until_complete(limiter(_FakeRequest("10.0.0.2"))) == "ok"
+    keys = [call.args[2] for call in limiter.client.eval.await_args_list]
+    assert keys == ["oyster360:rate-limit:10.0.0.1", "oyster360:rate-limit:10.0.0.2"]

@@ -5,7 +5,7 @@
 [flake8]
 # Fail on syntax errors, undefined names, and redefinitions — the same set CI
 # checks with: flake8 app tests --select=E9,F63,F7,F82
-select = E9,F63,F7,F82
+max-complexity = 10
 max-line-length = 100
 show-source = true
 count = true
