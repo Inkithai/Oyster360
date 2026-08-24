@@ -4,12 +4,36 @@ All notable changes to Oyster360 are documented here. This project follows [Keep
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-08-24
+
 ### Added
+- Deployment automation: every green run on `main` and every `v*` tag builds and publishes `oyster360-api` and `oyster360-web` images to GitHub Container Registry (`ghcr.io/inkithai/oyster360`).
+- `pip-audit` dependency gate for the backend tree alongside `npm audit` and the Trivy filesystem scan (SARIF results published to the GitHub Security tab).
+- Advisory `mypy` type-check step for the backend (pinned 2.3.1) as the first step toward a hard type gate.
+- Coverage reports uploaded as workflow artifacts for backend (XML) and frontend (lcov) test jobs.
+- CI now regenerates `uv.lock` and `requirements.lock` on Dependabot pull requests and pushes the result back to the PR branch, so dependency updates are installable, fully tested, and mergeable.
+- Manual `workflow_dispatch` trigger and a `develop` pull-request target; least-privilege per-job permissions.
 - Root PEP 621 `pyproject.toml` and `requirements.txt` so dependency tooling resolves runtime deps from the repository root.
 - `uv.lock` alongside `backend/requirements.lock` for reproducible Python installs.
 - `pre-commit` config that runs the same flake8 exclude set as CI (`backend/alembic/versions/*`).
 - Security, support, code of conduct, and authors documents.
 - Issue and pull-request templates that require source changes to ship with tests.
+- Testing guide (`docs/testing.md`) covering local test lanes, coverage gates, and the CI pipeline.
+
+### Changed
+- Backend pytest coverage gate raised from 60% to 70% (suite currently measures ~77%).
+- Frontend typecheck step runs `tsc --noEmit` explicitly; both production Docker images are now built on every pull request.
+- Pinned `trivy-action` to the upstream `v0.36.0` tag (the unprefixed tag Dependabot referenced no longer resolves).
+- Frontend lockfile verification normalizes `package-lock.json` to the CI npm format on Dependabot branches.
+
+### Dependencies
+- stripe 15.5.0 → 15.5.1
+- SQLAlchemy 2.0.41 → 2.0.52
+- python-json-logger 2.0.7 → 4.2.0
+- pre-commit 4.3.0 → 4.6.2
+- @tailwindcss/postcss 4.3.2 → 4.3.3
+- autoprefixer 10.4.21 → 10.5.4
+- @radix-ui/react-dialog 1.1.14 → 1.1.23
 
 ## [1.0.0] - 2026-08-21
 
