@@ -31,7 +31,7 @@
     "react-dom": "^19.2.8",
     "react-hook-form": "7.58.1",
     "tailwind-merge": "2.6.0",
-    "zod": "3.25.76",
+    "zod": "4.4.3",
     "zustand": "5.0.3"
   },
   "devDependencies": {
