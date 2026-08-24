@@ -7,7 +7,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "oyster360-backend"
-version = "1.0.0"
+version = "1.1.0"
 description = "Oyster360 — multi-tenant mushroom farm management SaaS (FastAPI backend)."
 readme = "../README.md"
 requires-python = ">=3.11"

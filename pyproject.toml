@@ -7,7 +7,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "oyster360"
-version = "1.0.0"
+version = "1.1.0"
 description = "AI-powered multi-tenant farm management for commercial oyster mushroom cultivation."
 readme = "README.md"
 requires-python = ">=3.11"
