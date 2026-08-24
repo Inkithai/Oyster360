@@ -247,6 +247,33 @@ The modular-monolith design keeps transactions, development, and deployment unde
 
 Docker is the recommended setup because it starts the complete service topology and runs migrations automatically.
 
+### Fastest path: `make fresh-start`
+
+On a machine that has never seen this repository, one target copies the env file, starts the databases, applies migrations, and brings up the API and web app:
+
+```bash
+git clone https://github.com/Inkithai/Oyster360.git
+cd Oyster360
+make fresh-start
+```
+
+`make fresh-start` chains these steps:
+
+1. `cp .env.example .env` (skipped when `.env` already exists)
+2. `docker compose up -d postgres redis` (the Compose database services)
+3. `alembic upgrade head` inside a one-shot backend container
+4. `docker compose up -d backend frontend`
+
+When startup succeeds the backend log contains:
+
+```text
+Uvicorn running on 0.0.0.0:8000
+```
+
+Confirm with `docker compose logs backend | grep -i uvicorn`, then open [http://localhost:3000](http://localhost:3000) and [http://localhost:8000/health](http://localhost:8000/health). Stop the stack with `make down`.
+
+`make bootstrap` (or `./scripts/bootstrap.sh`) is the same idea plus an optional `--seed` flag and a health-check wait loop.
+
 ### One-command bootstrap
 
 From a fresh clone, `scripts/bootstrap.sh` (or `make bootstrap`) performs every setup step below in one shot: it creates `.env` from `.env.example`, generates a random `JWT_SECRET` when the placeholder is still in place, builds and starts the stack (which applies `alembic upgrade head` before the API boots), and waits for the API health check before printing the URLs.
