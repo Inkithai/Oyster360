@@ -30,7 +30,7 @@ dependencies = [
     "qrcode[pil]==8.2",
     "requests==2.34.2",
     "sentry-sdk==2.68.0",
-    "python-json-logger==2.0.7",
+    "python-json-logger==4.2.0",
 ]
 
 [project.optional-dependencies]
