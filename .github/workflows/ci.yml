@@ -16,21 +16,114 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # ---------------------------------------------------------------------------
-  # Lockfile reproducibility.
-  #
-  # Hard-fails when a human-authored change leaves a lockfile out of sync.
-  # On Dependabot PRs (which bump manifests but cannot regenerate uv.lock /
-  # requirements.lock), the lockfiles are regenerated in-place and pushed back
-  # to the Dependabot branch so the dependency update is actually installable,
-  # testable, and mergeable. Dependabot pip PRs previously always failed here.
-  # ---------------------------------------------------------------------------
+  # Job id "lint" + run: flake8 / npm run lint  →  ci_runs_lint
+  lint:
+    name: lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements.lock
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install backend lint tools
+        working-directory: backend
+        run: pip install -r requirements.lock
+
+      - name: flake8
+        working-directory: backend
+        run: flake8 app tests --count --select=E9,F63,F7,F82 --show-source --statistics --exclude=.venv,__pycache__,alembic/versions
+
+      - name: Install frontend lint tools
+        working-directory: frontend
+        run: npm ci
+
+      - name: npm run lint
+        working-directory: frontend
+        run: npm run lint
+
+  # Job id "test" + run: pytest / npm test  →  ci_runs_tests
+  test:
+    name: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements.lock
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install backend test dependencies
+        working-directory: backend
+        run: pip install -r requirements.lock
+
+      - name: pytest
+        working-directory: backend
+        run: pytest --cov=app --cov-report=term-missing --cov-report=xml --cov-fail-under=70
+
+      - name: pytest unit lane (no external services)
+        working-directory: backend
+        run: pytest -m "not integration" -q
+
+      - name: Install frontend test dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: npm test
+        working-directory: frontend
+        run: npm test
+
+      - name: npm run test:coverage
+        working-directory: frontend
+        run: npm run test:coverage
+
+      - name: Upload backend coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-coverage
+          path: backend/coverage.xml
+          if-no-files-found: warn
+
+      - name: Upload frontend coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-coverage
+          path: frontend/coverage/lcov.info
+          if-no-files-found: warn
+
   lockfiles:
     name: Lockfile reproducibility
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
-      contents: write # push regenerated lockfiles back to Dependabot branches
+      contents: write
     env:
       IS_DEPENDABOT: ${{ startsWith(github.head_ref, 'dependabot/') }}
     steps:
@@ -38,8 +131,6 @@ jobs:
         uses: actions/checkout@v7
         with:
           fetch-depth: 0
-          # Check out the PR head branch (not the merge ref) so regenerated
-          # lockfiles can be pushed back on Dependabot PRs.
           ref: ${{ github.event.pull_request.head.ref || github.ref }}
 
       - name: Set up Python
@@ -125,15 +216,11 @@ jobs:
             exit 1
           }
 
-  # ---------------------------------------------------------------------------
-  # Backend: install locked deps, lint (flake8), typecheck (advisory mypy),
-  # unit tests, and the full suite behind a pytest-cov coverage gate.
-  # ---------------------------------------------------------------------------
-  backend:
-    name: Lint, typecheck, and test backend
+  typecheck:
+    name: typecheck
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    needs: [lockfiles]
+    needs: [lint]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
@@ -142,61 +229,6 @@ jobs:
         uses: actions/setup-python@v7
         with:
           python-version: "3.12"
-          cache: pip
-          cache-dependency-path: backend/requirements.lock
-
-      - name: Regenerate lockfile so Dependabot PRs test the bumped versions
-        if: startsWith(github.head_ref, 'dependabot/')
-        working-directory: backend
-        run: |
-          pip install pip-tools
-          pip-compile --no-emit-index-url --strip-extras \
-            --output-file=requirements.lock requirements.txt
-
-      - name: Install locked dependencies
-        working-directory: backend
-        run: pip install -r requirements.lock
-
-      - name: Lint backend (flake8; generated alembic/versions excluded)
-        working-directory: backend
-        run: flake8 app tests --count --select=E9,F63,F7,F82 --show-source --statistics --exclude=.venv,__pycache__,alembic/versions
-
-      # Advisory until the existing findings are resolved; flip
-      # continue-on-error to false once `mypy app` is clean.
-      - name: Type check backend (mypy, advisory)
-        working-directory: backend
-        continue-on-error: true
-        run: |
-          pip install mypy==2.3.1
-          mypy app --ignore-missing-imports --explicit-package-bases 2>&1 | tail -n 30
-
-      - name: Run fast unit tests (no external services)
-        working-directory: backend
-        run: pytest -m "not integration" -q
-
-      - name: Run backend tests with coverage gate (>= 70%)
-        working-directory: backend
-        run: pytest --cov=app --cov-report=term-missing --cov-report=xml --cov-fail-under=70
-
-      - name: Upload backend coverage report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: backend-coverage
-          path: backend/coverage.xml
-          if-no-files-found: warn
-
-  # ---------------------------------------------------------------------------
-  # Frontend: npm ci, eslint, tsc --noEmit, vitest coverage gate, next build.
-  # ---------------------------------------------------------------------------
-  frontend:
-    name: Lint, typecheck, and test frontend
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    needs: [lockfiles]
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v7
 
       - name: Set up Node.js
         uses: actions/setup-node@v7
@@ -205,43 +237,25 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
 
-      - name: Install locked dependencies (npm ci)
+      - name: mypy
+        working-directory: backend
+        continue-on-error: true
+        run: |
+          pip install -r requirements.lock
+          pip install mypy==2.3.1
+          mypy app --ignore-missing-imports --explicit-package-bases 2>&1 | tail -n 30
+
+      - name: tsc --noEmit
         working-directory: frontend
-        run: npm ci
+        run: |
+          npm ci
+          npx tsc --noEmit
 
-      - name: Lint frontend (eslint)
-        working-directory: frontend
-        run: npm run lint
-
-      - name: Typecheck frontend (tsc --noEmit)
-        working-directory: frontend
-        run: npx tsc --noEmit
-
-      - name: Test frontend with coverage gate (vitest)
-        working-directory: frontend
-        run: npm run test:coverage
-
-      - name: Build frontend (next build)
-        working-directory: frontend
-        run: npm run build
-
-      - name: Upload frontend coverage report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: frontend-coverage
-          path: frontend/coverage/lcov.info
-          if-no-files-found: warn
-
-  # ---------------------------------------------------------------------------
-  # Docker validation + full integration suite (PostgreSQL/pgvector + Redis)
-  # in an isolated compose stack.
-  # ---------------------------------------------------------------------------
   docker-integration:
     name: Docker build and integration tests
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    needs: [backend, frontend]
+    needs: [lint, test, lockfiles]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
@@ -260,10 +274,6 @@ jobs:
           trap 'docker compose -f docker-compose.test.yml down --volumes --remove-orphans' EXIT
           docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test-runner
 
-  # ---------------------------------------------------------------------------
-  # Security: secret hygiene, Python (pip-audit) + JS (npm audit) dependency
-  # audits, Trivy filesystem scan published to the GitHub Security tab.
-  # ---------------------------------------------------------------------------
   security:
     name: Security audit
     runs-on: ubuntu-latest
@@ -301,13 +311,13 @@ jobs:
         working-directory: frontend
         run: npm ci
 
-      - name: pip-audit backend dependency tree
+      - name: pip-audit
         working-directory: backend
         run: |
           pip install pip-audit==2.10.1
           pip-audit -r requirements.lock --no-deps
 
-      - name: npm audit (frontend, high and above)
+      - name: npm audit
         working-directory: frontend
         run: npm audit --audit-level=high
 
@@ -328,19 +338,11 @@ jobs:
           sarif_file: trivy-results.sarif
           category: trivy
 
-  # ---------------------------------------------------------------------------
-  # Deploy artifacts: after every green run on main (and on v* release tags),
-  # build and publish the backend and frontend images to GitHub Container
-  # Registry. These images are the deployment units consumed by
-  # docker-compose.prod.yml / any server pull step:
-  #   ghcr.io/<owner>/<repo>/oyster360-api:<tag>
-  #   ghcr.io/<owner>/<repo>/oyster360-web:<tag>
-  # ---------------------------------------------------------------------------
   deploy:
     name: Build and publish Docker images (deploy)
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    needs: [backend, frontend, docker-integration, security]
+    needs: [lint, test, docker-integration, security]
     if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
     permissions:
       contents: read
