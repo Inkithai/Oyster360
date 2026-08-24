@@ -2,20 +2,36 @@
 
 ## Quick Start
 
+On a machine that has never cloned this repository:
+
 ```bash
-git clone <repository>
-cd oyster360
-docker compose up --build
+git clone https://github.com/Inkithai/Oyster360.git
+cd Oyster360
+make fresh-start
+```
+
+That target copies `.env.example` to `.env`, starts PostgreSQL and Redis, runs `alembic upgrade head`, and starts the API and frontend. The backend is ready when its logs show:
+
+```text
+Uvicorn running on 0.0.0.0:8000
 ```
 
 **Access**:
 - Frontend: http://localhost:3000
 - Backend: http://localhost:8000/docs
+- Health: http://localhost:8000/health
 
-**Demo Login**:
+**Demo Login** (after `make bootstrap --seed` or `./scripts/bootstrap.sh --seed`):
 ```
 Email: admin@myco.farm
 Password: admin123
+```
+
+Equivalent manual Compose flow (migrations still run automatically in the backend container):
+
+```bash
+cp .env.example .env
+docker compose up --build
 ```
 
 ## Environment Variables
