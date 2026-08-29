@@ -373,7 +373,7 @@ jobs:
           } >> "$GITHUB_OUTPUT"
 
       - name: Build and push backend image (oyster360-api)
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: ./Dockerfile
@@ -381,7 +381,7 @@ jobs:
           tags: ${{ steps.tags.outputs.api }}
 
       - name: Build and push frontend image (oyster360-web)
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: ./frontend
           file: ./frontend/Dockerfile
