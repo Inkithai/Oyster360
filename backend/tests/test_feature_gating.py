@@ -48,3 +48,101 @@ def test_enterprise_has_all(db_session):
 def test_inactive_subscription_denies(db_session):
     _make_subscription(db_session, org_id=1, plan="pro", status="canceled")
     assert check_feature_access(1, "basic_batches", db_session) is False
+
+
+# ---------------------------------------------------------------------------
+# require_subscription decorator: plan-level enforcement on route handlers.
+# ---------------------------------------------------------------------------
+import asyncio
+
+import pytest
+from fastapi import HTTPException
+from types import SimpleNamespace
+
+from app.core.feature_gating import require_subscription
+
+
+@require_subscription("pro")
+async def _pro_endpoint(*, current_user=None, db=None):
+    return {"ok": True}
+
+
+def _user(org_id=1):
+    return SimpleNamespace(id=1, current_organization_id=org_id)
+
+
+def _run(coro):
+    """Execute an async route handler without pulling in an asyncio plugin."""
+    return asyncio.run(coro)
+
+
+def test_require_subscription_allows_matching_plan(db_session):
+    _make_subscription(db_session, org_id=1, plan="pro")
+
+    assert _run(_pro_endpoint(current_user=_user(), db=db_session)) == {"ok": True}
+
+
+def test_require_subscription_allows_higher_plan(db_session):
+    _make_subscription(db_session, org_id=1, plan="enterprise")
+
+    assert _run(_pro_endpoint(current_user=_user(), db=db_session)) == {"ok": True}
+
+
+def test_require_subscription_rejects_lower_plan(db_session):
+    _make_subscription(db_session, org_id=1, plan="starter")
+
+    with pytest.raises(HTTPException) as exc:
+        _run(_pro_endpoint(current_user=_user(), db=db_session))
+
+    assert exc.value.status_code == 403
+    assert "pro plan or higher" in exc.value.detail
+
+
+def test_require_subscription_rejects_unknown_plan_name(db_session):
+    _make_subscription(db_session, org_id=1, plan="legacy-beta")
+
+    with pytest.raises(HTTPException) as exc:
+        _run(_pro_endpoint(current_user=_user(), db=db_session))
+
+    assert exc.value.status_code == 403
+
+
+def test_require_subscription_rejects_missing_subscription(db_session):
+    with pytest.raises(HTTPException) as exc:
+        _run(_pro_endpoint(current_user=_user(), db=db_session))
+
+    assert exc.value.status_code == 403
+    assert exc.value.detail == "Active subscription required"
+
+
+def test_require_subscription_rejects_canceled_subscription(db_session):
+    _make_subscription(db_session, org_id=1, plan="enterprise", status="canceled")
+
+    with pytest.raises(HTTPException) as exc:
+        _run(_pro_endpoint(current_user=_user(), db=db_session))
+
+    assert exc.value.status_code == 403
+
+
+def test_require_subscription_requires_authentication(db_session):
+    with pytest.raises(HTTPException) as exc:
+        _run(_pro_endpoint(current_user=None, db=db_session))
+
+    assert exc.value.status_code == 401
+
+
+def test_require_subscription_requires_a_database_session():
+    with pytest.raises(HTTPException) as exc:
+        _run(_pro_endpoint(current_user=_user(), db=None))
+
+    assert exc.value.status_code == 500
+
+
+def test_require_subscription_isolates_organizations(db_session):
+    """A pro subscription belonging to another tenant must not grant access."""
+    _make_subscription(db_session, org_id=2, plan="pro")
+
+    with pytest.raises(HTTPException) as exc:
+        _run(_pro_endpoint(current_user=_user(org_id=1), db=db_session))
+
+    assert exc.value.status_code == 403
