@@ -20,15 +20,53 @@ from types import SimpleNamespace
 
 
 @pytest.fixture(autouse=True)
+def block_outbound_sockets(request, monkeypatch):
+    """Fail any test in the default lane that opens a real network connection.
+
+    The unit lane must be runnable in a network-disabled sandbox (verified with
+    ``unshare -rn`` and in CI). Rather than relying on every service being
+    mocked by convention, this fixture makes an escaped connection a loud test
+    failure. Tests marked ``integration`` are exempt because they intentionally
+    talk to the Compose-provided PostgreSQL and Redis.
+    """
+    import socket
+
+    if request.node.get_closest_marker("integration"):
+        return
+
+    real_connect = socket.socket.connect
+
+    def guarded_connect(self, address, *args, **kwargs):
+        # AF_UNIX and loopback are allowed: TestClient and SQLite need them.
+        if self.family in (socket.AF_INET, socket.AF_INET6):
+            host = address[0] if isinstance(address, tuple) else address
+            if host not in ("127.0.0.1", "::1", "localhost"):
+                raise AssertionError(
+                    f"Outbound network connection to {host} attempted in a unit test. "
+                    "Mock the external service, or mark the test with "
+                    "@pytest.mark.integration."
+                )
+        return real_connect(self, address, *args, **kwargs)
+
+    monkeypatch.setattr(socket.socket, "connect", guarded_connect)
+
+
+@pytest.fixture(autouse=True)
 def block_external_services(monkeypatch):
-    """Keep every test deterministic and prevent accidental billable API calls."""
+    """Keep every test deterministic and prevent accidental billable API calls.
+
+    Stripe, outbound HTTP (OpenAI/Anthropic/any provider) and Redis are all
+    replaced with in-process stubs so the default lane needs no credentials,
+    no internet access and no running infrastructure.
+    """
     import requests
     import stripe
 
     def unexpected_network(*args, **kwargs):
         raise AssertionError("External HTTP calls are disabled in tests")
 
-    monkeypatch.setattr(requests, "post", unexpected_network)
+    for verb in ("get", "post", "put", "patch", "delete", "head", "request"):
+        monkeypatch.setattr(requests, verb, unexpected_network)
     monkeypatch.setattr(
         stripe.Customer,
         "create",
