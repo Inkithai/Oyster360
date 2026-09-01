@@ -1,6 +1,9 @@
 # Oyster360 developer shortcuts. The same commands live in README.md; run
 # `make help` to list targets.
-.PHONY: help bootstrap fresh-start up down logs ps migrate seed verify test test-backend test-frontend test-e2e lint
+.PHONY: help setup bootstrap fresh-start up down logs ps migrate seed verify quality test test-unit test-backend test-frontend test-integration test-e2e lint
+
+setup: ## Prepare a fresh clone (creates .env and starts the Docker stack)
+	./scripts/bootstrap.sh
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-18s\033[0m %s\n", $$1, $$2}'
@@ -41,18 +44,23 @@ seed: ## Seed demo farm data inside the running backend
 	docker compose exec -T backend python -c "from app.database.database import SessionLocal; from app.services.seed_data import seed_demo_data; seed_demo_data(SessionLocal())"
 
 verify: ## Run the local checks CI enforces (no Docker or live services needed)
-	cd backend && pytest --cov=app --cov-report=term-missing --cov-fail-under=60
+	cd backend && pytest -m "not integration" --cov=app --cov-report=term-missing --cov-fail-under=60
 	cd frontend && npm run lint && npm run typecheck
 	cd frontend && npm run test:coverage
 
-test: test-backend test-frontend ## Run backend and frontend test suites
+quality: verify ## Alias for the complete offline quality gate
+
+test: test-unit ## Run deterministic unit tests (no network, database, or API keys)
 
 test-unit: ## Fast offline lane: backend unit tests + frontend tests, zero external services
 	cd backend && pytest -m "not integration" -q
 	cd frontend && npm test
 
-test-backend: ## Run the full backend suite (in-memory SQLite; no services needed)
-	cd backend && pytest
+test-backend: ## Run deterministic backend tests only
+	cd backend && pytest -m "not integration" -q
+
+test-integration: ## Run integration tests (requires Docker test services)
+	trap 'docker compose -f docker-compose.test.yml down --volumes --remove-orphans' EXIT; docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test-runner
 
 test-frontend: ## Run frontend unit tests
 	cd frontend && npm test

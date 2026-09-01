@@ -247,17 +247,17 @@ The modular-monolith design keeps transactions, development, and deployment unde
 
 Docker is the recommended setup because it starts the complete service topology and runs migrations automatically.
 
-### Fastest path: `make fresh-start`
+### Fastest path: `make setup`
 
 On a machine that has never seen this repository, one target copies the env file, starts the databases, applies migrations, and brings up the API and web app:
 
 ```bash
 git clone https://github.com/Inkithai/Oyster360.git
 cd Oyster360
-make fresh-start
+make setup
 ```
 
-`make fresh-start` chains these steps:
+`make setup` runs the idempotent bootstrap script and chains these steps:
 
 1. `cp .env.example .env` (skipped when `.env` already exists)
 2. `docker compose up -d postgres redis` (the Compose database services)
