@@ -99,7 +99,7 @@ log "Backend typecheck (mypy)"
 
 log "Backend tests + coverage (offline lane)"
 (cd backend && "$PY" -m pytest -m "not integration" \
-  --cov=app --cov-report=term-missing --cov-fail-under=70)
+  --cov=app --cov-report=term-missing --cov-fail-under=80)
 
 log "Frontend lint (eslint)"
 (cd frontend && npm run lint)

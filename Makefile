@@ -53,7 +53,7 @@ verify: ## Run the local checks CI enforces (assumes deps are already installed)
 	python3 scripts/check_dependency_sync.py
 	cd backend && flake8 app tests --count --show-source --statistics --exclude=.venv,__pycache__,alembic/versions
 	cd backend && mypy app
-	cd backend && pytest -m "not integration" --cov=app --cov-report=term-missing --cov-fail-under=70
+	cd backend && pytest -m "not integration" --cov=app --cov-report=term-missing --cov-fail-under=80
 	cd frontend && npm run lint && npm run typecheck
 	cd frontend && npm run test:coverage
 
