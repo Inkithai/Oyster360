@@ -32,7 +32,7 @@ class PurchaseOrder(Base):
     supplier_id = Column(Integer, ForeignKey("suppliers.id"))
     organization_id = Column(Integer, ForeignKey("organizations.id"), nullable=False, index=True)
     order_number = Column(String, unique=True)
-    status = Column(Enum(PurchaseOrderStatus), default=PurchaseOrderStatus.PENDING)
+    status: Column[PurchaseOrderStatus] = Column(Enum(PurchaseOrderStatus), default=PurchaseOrderStatus.PENDING)
     total_amount = Column(Float, default=0)
     expected_date = Column(DateTime)
     received_date = Column(DateTime)

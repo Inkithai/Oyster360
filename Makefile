@@ -1,6 +1,6 @@
 # Oyster360 developer shortcuts. The same commands live in README.md; run
 # `make help` to list targets.
-.PHONY: help setup bootstrap fresh-start up down logs ps migrate seed verify quality test test-unit test-backend test-frontend test-integration test-e2e lint
+.PHONY: help ci-local deps-check setup bootstrap fresh-start up down logs ps migrate seed verify quality test test-unit test-backend test-frontend test-integration test-e2e lint
 
 setup: ## Prepare a fresh clone (creates .env and starts the Docker stack)
 	./scripts/bootstrap.sh
@@ -43,8 +43,17 @@ migrate: ## Apply all Alembic migrations inside the running backend
 seed: ## Seed demo farm data inside the running backend
 	docker compose exec -T backend python -c "from app.database.database import SessionLocal; from app.services.seed_data import seed_demo_data; seed_demo_data(SessionLocal())"
 
-verify: ## Run the local checks CI enforces (no Docker or live services needed)
-	cd backend && pytest -m "not integration" --cov=app --cov-report=term-missing --cov-fail-under=60
+ci-local: ## Reproduce every CI gate from a fresh clone (installs deps, no Docker needed)
+	./scripts/ci-local.sh
+
+deps-check: ## Verify dependency manifests and lockfiles agree
+	python3 scripts/check_dependency_sync.py
+
+verify: ## Run the local checks CI enforces (assumes deps are already installed)
+	python3 scripts/check_dependency_sync.py
+	cd backend && flake8 app tests --count --show-source --statistics --exclude=.venv,__pycache__,alembic/versions
+	cd backend && mypy app
+	cd backend && pytest -m "not integration" --cov=app --cov-report=term-missing --cov-fail-under=80
 	cd frontend && npm run lint && npm run typecheck
 	cd frontend && npm run test:coverage
 

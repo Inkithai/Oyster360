@@ -29,4 +29,4 @@ def get_organization_id(current_user: User = Depends(get_current_user)) -> int:
             status_code=403,
             detail="No active organization. Please switch to an organization."
         )
-    return current_user.current_organization_id
+    return int(current_user.current_organization_id)

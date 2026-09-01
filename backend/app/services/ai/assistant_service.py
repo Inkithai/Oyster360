@@ -17,7 +17,7 @@ class AssistantService:
         self.provider = os.getenv("AI_PROVIDER", "rule-based")  # openai, gemini, ollama, rule-based
 
     def chat(self, question: str, batch_id: int = None, user_id: int = None) -> Dict[str, Any]:
-        context = []
+        context: List[str] = []
         farm_data = ""
 
         # Gather farm context

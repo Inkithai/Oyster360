@@ -10,14 +10,50 @@ from the repository root.
 | --- | --- | --- |
 | Backend fast unit | All tests not marked `integration` (no external services) | `cd backend && pytest -m "not integration" -q` |
 | Backend full suite | Everything, including `integration`-marked tests (in-memory SQLite) | `cd backend && pytest` |
-| Backend + coverage gate | Full suite with `pytest-cov`, fails under 70% | `cd backend && pytest --cov=app --cov-report=term-missing --cov-fail-under=70` |
+| Backend + coverage gate | Full suite with `pytest-cov`, fails under 80% | `cd backend && pytest --cov=app --cov-report=term-missing --cov-fail-under=80` |
+| Backend typecheck | `mypy` against `backend/mypy.ini` (blocking in CI) | `cd backend && mypy app` |
+| Dependency sync | Manifests vs. lockfiles, both ecosystems | `make deps-check` |
 | Frontend unit + coverage | Vitest with jsdom + React Testing Library, thresholds enforced | `cd frontend && npm run test:coverage` |
 | Frontend typecheck | TypeScript, no emit | `cd frontend && npx tsc --noEmit` |
 | Frontend lint | ESLint, zero warnings allowed | `cd frontend && npm run lint` |
 | End-to-end | Playwright browser specs (installs Chromium on first use) | `cd frontend && npm run test:e2e` |
 | Compose integration | Full suite against ephemeral PostgreSQL (pgvector) + Redis in Docker | `docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test-runner` |
 
-The one-command local equivalent of the CI gates is `make verify`.
+The one-command local equivalent of the CI gates is **`make ci-local`**, which
+also installs dependencies and therefore works on a completely fresh clone:
+
+```bash
+git clone https://github.com/Inkithai/Oyster360.git
+cd Oyster360
+make ci-local
+```
+
+Use `SKIP_INSTALL=1 make ci-local` (or `make verify`) when dependencies are
+already installed.
+
+## Offline isolation guarantee
+
+The default lane must run with no credentials, no infrastructure and no
+internet. Two autouse fixtures in `backend/tests/conftest.py` enforce this
+rather than leaving it to convention:
+
+- `block_outbound_sockets` raises `AssertionError` if a non-`integration` test
+  connects to anything other than loopback.
+- `block_external_services` stubs every `requests` HTTP verb and every Stripe
+  client call, including webhook signature verification.
+
+```text
+pytest -m "not integration"
+   ├── PostgreSQL ──── in-memory SQLite, fresh schema per test
+   ├── Redis ───────── in-process fake client
+   ├── Stripe ──────── stubbed client and webhook verification
+   ├── AI providers ── stubbed; services fall back to rule-based output
+   └── outbound TCP ── blocked
+```
+
+`tests/test_offline_isolation.py` asserts these properties, and the lane is
+verified to pass inside a network-disabled namespace (`unshare -rn`). If a new
+test genuinely needs infrastructure, mark it `@pytest.mark.integration`.
 
 ## Backend conventions
 
@@ -27,9 +63,12 @@ The one-command local equivalent of the CI gates is `make verify`.
   `@pytest.mark.integration` so the fast lane stays offline.
 - Coverage is measured across `backend/app` with branch coverage on
   (`[tool.coverage.run]` in `backend/pyproject.toml`). The suite currently
-  measures ~77%; CI fails below 70%.
-- Lint policy (`flake8`, select `E9,F63,F7,F82`) intentionally excludes
-  generated Alembic migrations under `backend/alembic/versions/`.
+  measures ~91%; CI fails below 80%.
+- Lint policy (`flake8`) intentionally excludes generated Alembic migrations
+  under `backend/alembic/versions/`.
+- Type checking is a hard gate: `mypy app` must pass. `backend/mypy.ini` holds
+  a shrinking per-module baseline for files awaiting the SQLAlchemy
+  `Mapped[...]` migration; new modules are checked from day one.
 
 ## Frontend conventions
 
@@ -43,24 +82,52 @@ The one-command local equivalent of the CI gates is `make verify`.
 
 ## What CI runs on every pull request
 
-`.github/workflows/ci.yml` executes six jobs:
+`.github/workflows/ci.yml` executes seven jobs:
 
 1. **Lockfile reproducibility** — `uv lock --check` (root and backend),
-   re-compiled `requirements.lock`, and `package-lock.json` must all match
-   their manifests. On Dependabot PRs the lockfiles are regenerated and pushed
-   back to the branch instead of failing.
-2. **Backend** — flake8, advisory mypy, fast unit lane, full suite with the
-   70% coverage gate; coverage XML uploaded as an artifact.
-3. **Frontend** — `npm ci`, ESLint, `tsc --noEmit`, Vitest with coverage
-   thresholds, `next build`; lcov uploaded as an artifact.
-4. **Docker build and integration tests** — `docker compose config`
+   `scripts/check_dependency_sync.py`, `pip install --dry-run -r
+   requirements.lock`, and `npm ci --dry-run`. On Dependabot PRs the uv
+   lockfiles are regenerated and pushed back to the branch instead of failing.
+2. **Lint** — flake8 (backend) and `eslint --max-warnings=0` (frontend).
+3. **Typecheck** — `mypy app` and `tsc --noEmit`. Both are blocking.
+4. **Test** — fast offline lane, full suite with the 80% coverage gate, Vitest
+   with coverage; coverage XML and lcov uploaded as artifacts.
+5. **Docker build and integration tests** — `docker compose config`
    validation, builds of both production images, and the isolated Compose
    test stack.
-5. **Security audit** — blocks committed `.env` files, `pip-audit` on
+6. **Security audit** — blocks committed `.env` files, `pip-audit` on
    `requirements.lock`, `npm audit --audit-level=high`, and a Trivy
    filesystem scan whose SARIF lands in the GitHub Security tab.
-6. **Deploy (main and v\* tags only)** — builds and publishes
+7. **Deploy (main and v\* tags only)** — builds and publishes
    `oyster360-api` and `oyster360-web` images to GitHub Container Registry.
+
+## Known measurement caveat: async endpoints under-report coverage
+
+`coverage.py` under-reports line coverage for `async def` FastAPI route
+handlers exercised through Starlette's `TestClient`, because the coroutine runs
+on the portal's worker thread rather than the thread the tracer was installed
+on. The effect is one-directional: reported coverage is a **lower bound**, so a
+low number for an async endpoint does not by itself mean the code is untested.
+
+Measured on `app/api/webhooks.py` with an identical set of assertions:
+
+| How the handler is invoked | Reported coverage |
+| --- | --- |
+| Through `TestClient` (HTTP) | 38% |
+| Awaited directly with `asyncio.run` | 64% |
+
+Only two route handlers in the backend are `async def`
+(`app/api/webhooks.py` and `app/api/assistant.py`); every other router is
+`def`, which FastAPI runs in a threadpool that the tracer does follow, so their
+figures are accurate.
+
+Practical guidance:
+
+- Do not chase the number for these two modules by rewriting tests.
+- Assert on observable outcomes (HTTP status, persisted rows, service calls)
+  rather than trusting the coverage percentage.
+- `tests/test_stripe_webhooks.py` covers the webhook handler's success,
+  idempotency, authentication and failure paths despite the reported figure.
 
 ## Writing good tests
 

@@ -21,7 +21,7 @@ class Batch(Base):
     organization_id = Column(Integer, ForeignKey("organizations.id"), nullable=True)
     strain_id = Column(Integer, ForeignKey("strains.id"))
     recipe_version_id = Column(Integer, ForeignKey("recipe_versions.id"))
-    current_stage = Column(Enum(BatchStage), default=BatchStage.PREPARATION)
+    current_stage: Column[BatchStage] = Column(Enum(BatchStage), default=BatchStage.PREPARATION)
     start_date = Column(DateTime)
     status = Column(String, default="active")
     deleted_at = Column(DateTime, nullable=True)  # Soft delete

@@ -12,8 +12,23 @@ class RAGService:
         self.db = db
 
     def chunk_text(self, text: str, chunk_size: int = 800, overlap: int = 100) -> List[str]:
-        """Simple text chunking strategy"""
+        """Split text into overlapping word windows.
+
+        Guard rails matter here: an ``overlap`` greater than or equal to
+        ``chunk_size`` produces a non-positive stride, which would loop
+        forever, and blank documents must yield no chunks rather than a
+        single empty one.
+        """
+        if chunk_size <= 0:
+            raise ValueError("chunk_size must be positive")
+        if overlap < 0:
+            raise ValueError("overlap must not be negative")
+        if overlap >= chunk_size:
+            raise ValueError("overlap must be smaller than chunk_size")
+
         words = text.split()
+        if not words:
+            return []
         chunks = []
         for i in range(0, len(words), chunk_size - overlap):
             chunk = " ".join(words[i:i + chunk_size])
@@ -45,16 +60,25 @@ class RAGService:
         ).filter(KnowledgeDocument.uploaded_by == user_id).all()
         scored_chunks = []
 
-        query_words = set(query.lower().split())
+        query_words = self._tokenize(query)
 
         for chunk in documents:
-            chunk_words = set(chunk.content.lower().split())
+            chunk_words = self._tokenize(chunk.content)
             score = len(query_words & chunk_words)
             if score > 0:
                 scored_chunks.append((score, chunk.content))
 
         scored_chunks.sort(reverse=True)
         return [chunk for _, chunk in scored_chunks[:top_k]]
+
+    @staticmethod
+    def _tokenize(text: str) -> set:
+        """Lowercase word tokens with punctuation stripped.
+
+        Without this, a question such as "what humidity?" would never match a
+        chunk containing the bare word "humidity".
+        """
+        return set(re.findall(r"[a-z0-9]+", text.lower()))
 
     def build_context(self, query: str, user_id: int, farm_data: str = "") -> str:
         """Build prompt context from documents + farm data"""

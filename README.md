@@ -17,10 +17,12 @@ Oyster360 combines cultivation operations, environmental records, inventory, pur
 - [Environment Configuration](#environment-configuration)
 - [Native Development Setup](#native-development-setup)
 - [Database Migrations](#database-migrations)
+- [Reproducing CI Locally](#reproducing-ci-locally)
 - [Testing and Quality Checks](#testing-and-quality-checks)
 - [Project Structure](#project-structure)
 - [API and Service URLs](#api-and-service-urls)
 - [Deployment Notes](#deployment-notes)
+- [Repository history and provenance](#repository-history-and-provenance)
 - [Additional Documentation](#additional-documentation)
 
 ## Features
@@ -132,6 +134,52 @@ flowchart LR
     CB --> REDIS
     REDIS --> CW
     CW --> DB
+```
+
+### Layered View
+
+The same system as a request-path stack, for readers who want the layering rather than the container topology:
+
+```text
+                      ┌───────────────────────────┐
+                      │   Browser / Farm User     │
+                      └─────────────┬─────────────┘
+                                    │ HTTPS
+                      ┌─────────────▼─────────────┐
+                      │  Next.js 16 App Router    │
+                      │  React 19 · TanStack      │
+                      └─────────────┬─────────────┘
+                                    │ same-origin /api proxy
+                      ┌─────────────▼─────────────┐
+                      │     FastAPI Routers       │
+                      │  Pydantic request models  │
+                      └─────────────┬─────────────┘
+                                    │
+                      ┌─────────────▼─────────────┐
+                      │  Auth · RBAC · Tenancy    │
+                      │  JWT + organization scope │
+                      └─────────────┬─────────────┘
+                                    │
+                      ┌─────────────▼─────────────┐
+                      │      Domain Services      │
+                      │ batches · billing · AI ·  │
+                      │ inventory · analytics     │
+                      └─────────────┬─────────────┘
+                                    │
+                      ┌─────────────▼─────────────┐
+                      │ Repositories / SQLAlchemy │
+                      └─────────────┬─────────────┘
+                                    │
+                      ┌─────────────▼─────────────┐
+                      │        PostgreSQL         │
+                      └───────────────────────────┘
+
+  External dependencies (all stubbed in the default test lane):
+
+  ┌──────────┐  ┌───────────────┐  ┌───────────────┐  ┌────────────┐
+  │  Stripe  │  │  AI providers │  │ Redis (cache  │  │  Celery    │
+  │ billing  │  │ OpenAI/Gemini │  │ + broker)     │  │  workers   │
+  └──────────┘  └───────────────┘  └───────────────┘  └────────────┘
 ```
 
 ### Request Flow
@@ -506,16 +554,84 @@ alembic upgrade head
 
 The local backend container applies migrations before starting FastAPI. The production Compose topology uses a dedicated one-time `migrate` service before API and worker replicas start.
 
+## Reproducing CI Locally
+
+Every gate GitHub Actions enforces can be reproduced on a fresh clone with a single command. It needs only Python 3.11+ and Node 20+ — no Docker, no PostgreSQL, no Redis, and no API keys.
+
+```bash
+git clone https://github.com/Inkithai/Oyster360.git
+cd Oyster360
+make ci-local
+```
+
+`make ci-local` runs [`scripts/ci-local.sh`](scripts/ci-local.sh), which performs the following and exits non-zero on the first failure:
+
+```text
+make ci-local
+     │
+     ├── 1. .env from .env.example (if missing)
+     ├── 2. backend deps  -> .venv from backend/requirements.lock
+     ├── 3. frontend deps -> npm ci from package-lock.json
+     ├── 4. dependency sync check (manifests <-> lockfiles)
+     ├── 5. backend lint      flake8
+     ├── 6. backend typecheck mypy
+     ├── 7. backend tests     pytest -m "not integration" + coverage >= 80%
+     ├── 8. frontend lint     eslint
+     ├── 9. frontend typecheck tsc --noEmit
+     └── 10. frontend tests   vitest + coverage
+```
+
+Useful variants:
+
+```bash
+SKIP_INSTALL=1 make ci-local   # reuse an existing .venv / node_modules
+make verify                    # same checks, assumes dependencies are installed
+make deps-check                # dependency manifest/lockfile consistency only
+make test-integration          # the Docker lane: PostgreSQL + Redis + full suite
+```
+
+### What CI checks
+
+| Job | Checks |
+|---|---|
+| `lint` | `flake8` (backend), `eslint --max-warnings=0` (frontend) |
+| `typecheck` | `mypy app` (blocking, config in `backend/mypy.ini`), `tsc --noEmit` |
+| `test` | `pytest` with coverage gate, offline `pytest -m "not integration"` lane, `vitest` + coverage |
+| `lockfiles` | `uv lock --check` (root and backend), `scripts/check_dependency_sync.py`, `npm ci --dry-run` |
+| `security` | committed-`.env` guard, `pip-audit`, `npm audit`, Trivy filesystem scan |
+| `docker-integration` | Compose config validation, both image builds, full suite incl. `integration` tests |
+| `deploy` | builds and publishes images to GHCR on `main` and `v*` tags |
+
 ## Testing and Quality Checks
+
+### Test isolation guarantees
+
+The default lane is completely self-contained. `backend/tests/conftest.py` installs two autouse fixtures that make this a property of the suite rather than a convention:
+
+- **`block_outbound_sockets`** fails any non-`integration` test that opens a socket to anything other than loopback.
+- **`block_external_services`** replaces every `requests` HTTP verb and every Stripe client call with in-process stubs.
+
+```text
+pytest -m "not integration"
+   │
+   ├── PostgreSQL ──── in-memory SQLite, fresh schema per test
+   ├── Redis ───────── in-process fake client
+   ├── Stripe ──────── stubbed client + stubbed webhook signature verification
+   ├── OpenAI/Gemini ─ stubbed; services fall back to rule-based output
+   └── outbound TCP ── blocked, raises AssertionError
+```
+
+`tests/test_offline_isolation.py` asserts these guarantees directly, and the whole lane is verified to pass inside a network-disabled namespace (`unshare -rn`). Tests that genuinely need infrastructure are marked `@pytest.mark.integration` and run only in the Compose lane.
 
 ### Backend
 
 ```bash
 cd backend
 pip install -r requirements.lock
-pytest -m "not integration"                     # fast unit lane, skips end-to-end flows
-pytest --cov=app --cov-report=term-missing       # full suite with coverage
-flake8 app tests --count --select=E9,F63,F7,F82 --show-source --statistics
+pytest -m "not integration"                      # fast offline lane, no services needed
+pytest --cov=app --cov-report=term-missing       # full suite with coverage (gate: 80%)
+flake8 app tests --count --show-source --statistics --exclude=.venv,__pycache__,alembic/versions
+mypy app                                         # config: backend/mypy.ini
 ```
 
 The backend suite uses an isolated in-memory SQLite database for API, authentication, model-registry, integration, and tenant-security tests. `pytest` needs no running PostgreSQL, Redis, external account, or manually-created environment file: `conftest.py` blocks outbound HTTP, stubs every Stripe client call, and builds a fresh schema per test. The end-to-end lifecycle tests in `tests/test_integration.py` are marked `integration`, so `pytest -m "not integration"` gives a seconds-long feedback loop; CI runs that lane first and the compose stack still exercises the full suite.
@@ -566,8 +682,11 @@ Oyster360/
 │   │   └── tasks/               # Celery tasks
 │   ├── tests/                   # Pytest suite
 │   ├── Dockerfile
+│   ├── mypy.ini                 # Static type-checking policy (CI gate)
+│   ├── pyproject.toml           # Backend PEP 621 manifest
 │   ├── requirements-runtime.txt # Runtime-only container dependencies
-│   └── requirements.txt         # Local/CI dependencies
+│   ├── requirements-dev.txt     # Development/CI-only dependencies
+│   └── requirements.lock        # Fully resolved install set (CI + Docker)
 ├── frontend/
 │   ├── src/
 │   │   ├── app/                 # Next.js pages and layouts
@@ -579,7 +698,7 @@ Oyster360/
 │   ├── playwright.config.ts
 │   └── vitest.config.ts
 ├── docs/                        # Product, API, setup, architecture, deployment docs
-├── scripts/                     # Bootstrap, deployment, and backup scripts
+├── scripts/                     # bootstrap.sh, ci-local.sh, check_dependency_sync.py, deploy, backup
 ├── Makefile                     # Developer shortcuts (make help)
 ├── docker-compose.yml           # Local complete stack
 ├── docker-compose.prod.yml      # Production-oriented stack
@@ -614,6 +733,66 @@ Main API families are mounted under `/api/auth`, `/api/batches`, `/api/recipes`,
 - Configure Stripe to send signed events to `/api/webhooks/stripe`.
 - Back up PostgreSQL and test restoration procedures before production use.
 
+## Repository history and provenance
+
+**Summary: Oyster360 is the work of a single author. The Git commit history
+does not accurately reflect how or when the code was written, and should not
+be relied on as a development record.**
+
+This section exists so that anyone auditing, forking, or evaluating this
+repository has an accurate picture. The code is real and works; the history
+around it is not trustworthy, and pretending otherwise would be worse than
+saying so.
+
+### What is verifiable
+
+- The GitHub repository was created on **2026-07-07**.
+- The commit graph contains **four unrelated root (parentless) commits**, which
+  is not possible in a single continuous project history.
+- Two pairs of those roots have **byte-identical file trees** (identical Git
+  tree hashes) but different authors and dates more than seven months apart.
+- The earliest root commit is authored "Priya Nair", dated **2025-01-14** —
+  roughly eighteen months *before* the repository existed.
+- Another root commit is authored `Your Name <youremail@example.com>` with the
+  message **"copied from my gitlab"**, which is the most plausible account of
+  where the codebase actually came from.
+- 98 commits dated before 2026-04-08 occur at only **three distinct times of
+  day** (09:00, 12:00, 15:00), never on a weekend, with author and committer
+  timestamps identical to the second and gaps of only 3–6 days.
+- Five commits share the **exact same timestamp** (2026-08-24 04:12:50) under
+  five different author identities.
+- Twelve author identities in the history — Priya Nair, Marcus Lee, Sofia
+  Ramirez, Daniel Cho, Elena Vasquez, James Wright, Aisha Rahman, Thomas
+  Okonkwo, Maya Chen and variants — have **no GitHub accounts** and never
+  contributed. They were previously listed in `AUTHORS.md` and
+  `pyproject.toml`; those claims have been removed.
+
+### What this means
+
+The genuine contributors are [@Inkithai](https://github.com/Inkithai) plus
+automated tooling (an AI coding agent, Dependabot, and GitHub Actions). Any
+metric derived from contributor count, commit cadence, or project age will be
+misleading for this repository.
+
+The commit timestamps have deliberately **not** been rewritten. Rewriting them
+would replace one provenance problem with another and destroy the evidence
+above. The history is left as-is and documented instead.
+
+### What is trustworthy
+
+The current state of the codebase stands on its own and can be verified
+directly rather than taken on trust:
+
+```bash
+git clone https://github.com/Inkithai/Oyster360.git
+cd Oyster360
+make ci-local
+```
+
+That runs lint, type checking, the full offline test suite with an enforced
+coverage gate, and dependency-consistency checks from a clean checkout. See
+[Reproducing CI Locally](#reproducing-ci-locally).
+
 ## Additional Documentation
 
 - [Setup Guide](docs/SETUP.md)
@@ -626,22 +805,48 @@ Main API families are mounted under `/api/auth`, `/api/batches`, `/api/recipes`,
 
 ## Reproducible Dependencies
 
-Both package ecosystems have committed lockfiles. Frontend installs must use `npm ci` with `frontend/package-lock.json`. Backend local development and CI install `backend/requirements.lock` (also published as `backend/uv.lock` and declared in the root `pyproject.toml`), which pins direct and transitive Python dependencies. The root `requirements.txt` and `pyproject.toml` exist so dependency scanners that only inspect the repository root still see the runtime manifest.
+Each ecosystem has exactly one dependency story, and CI fails if any part of it drifts.
 
-To intentionally refresh the backend lock in a clean virtual environment:
-
-```bash
-cd backend
-python -m venv .lock-venv
-. .lock-venv/bin/activate
-python -m pip install --upgrade pip pip-tools
-pip-compile --no-emit-index-url --strip-extras \
-  --output-file=requirements.lock requirements.txt
-pip install -r requirements.lock
-pytest
+```text
+Python                                  Node
+├── pyproject.toml            (root)    ├── frontend/package.json
+├── backend/pyproject.toml              └── frontend/package-lock.json
+├── backend/requirements-runtime.txt
+├── backend/requirements-dev.txt
+├── backend/requirements.lock  <- installed by CI, Docker and make ci-local
+├── uv.lock                    (root)
+└── backend/uv.lock
 ```
 
-Review the resulting dependency diff and security scan before committing it. Dependabot checks npm and pip dependencies weekly via `.github/dependabot.yml`.
+- The root `pyproject.toml` is the canonical PEP 621 manifest, so scanners that only inspect the repository root see every direct runtime dependency pinned to an exact version.
+- `backend/pyproject.toml` declares the identical set for the backend package.
+- `backend/requirements.lock` is the fully resolved set (direct + transitive) that CI, the Docker images and `make ci-local` install.
+- Frontend installs always use `npm ci` against the committed `package-lock.json`.
+
+### Consistency enforcement
+
+[`scripts/check_dependency_sync.py`](scripts/check_dependency_sync.py) (run by `make deps-check`, `make ci-local`, and the CI `lockfiles` job) asserts that:
+
+1. the root and backend `pyproject.toml` declare the same runtime and dev dependencies;
+2. every declared direct dependency appears in `backend/requirements.lock` at the exact declared version;
+3. `requirements-runtime.txt` and `requirements-dev.txt` agree with `pyproject.toml`;
+4. `package-lock.json` matches `package.json` name, version and every declared range, with a resolved entry per package.
+
+CI additionally runs `uv lock --check` on both `uv.lock` files, `pip install --dry-run -r requirements.lock`, and `npm ci --dry-run`.
+
+### Refreshing the locks
+
+```bash
+# Python: after editing pyproject.toml dependency pins
+uv pip compile pyproject.toml --extra dev --output-file backend/requirements.lock
+uv lock && (cd backend && uv lock)
+make deps-check
+
+# Node
+cd frontend && npm install
+```
+
+Review the resulting dependency diff and security scan before committing. Dependabot checks npm and pip dependencies weekly via `.github/dependabot.yml`.
 
 ## Contributing
 
