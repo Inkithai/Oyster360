@@ -84,7 +84,7 @@ jobs:
 
       - name: pytest
         working-directory: backend
-        run: pytest --cov=app --cov-report=term-missing --cov-report=xml --cov-fail-under=70
+        run: pytest --cov=app --cov-report=term-missing --cov-report=xml --cov-fail-under=80
 
       - name: pytest unit lane (no external services)
         working-directory: backend
@@ -138,6 +138,13 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
       - name: Install uv
         run: pip install uv
 
@@ -168,15 +175,6 @@ jobs:
             fi
           fi
 
-      - name: Verify backend requirements lockfile
-        run: |
-          pip install uv
-          uv pip compile pyproject.toml --output-file backend/requirements.lock
-          git diff --exit-code -- backend/requirements.lock || {
-            echo "::error::backend/requirements.lock is out of date with pyproject.toml."
-            exit 1
-          }
-
       - name: Commit regenerated lockfiles to the Dependabot branch
         if: >-
           github.event_name == 'pull_request' &&
@@ -193,19 +191,16 @@ jobs:
             git push || echo "::warning::Could not push regenerated lockfiles; continuing verification against the regenerated files."
           fi
 
+      - name: Verify dependency manifests and lockfiles agree
+        run: python scripts/check_dependency_sync.py
+
       - name: Verify locked backend dependencies are installable from scratch
         working-directory: backend
         run: pip install --dry-run -r requirements.lock
 
-      - name: Verify frontend lockfile matches package.json
+      - name: Verify frontend lockfile installs cleanly with npm ci
         working-directory: frontend
-        run: |
-          npm install --package-lock-only --ignore-scripts --no-audit --no-fund
-          git diff --exit-code -- package-lock.json || {
-            echo "::error::frontend/package-lock.json does not match package.json."
-            echo "Regenerate it with: cd frontend && npm install"
-            exit 1
-          }
+        run: npm ci --dry-run --no-audit --no-fund
 
   typecheck:
     name: typecheck
@@ -228,13 +223,11 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
 
-      - name: mypy
+      - name: mypy (configuration in backend/mypy.ini, failures block the build)
         working-directory: backend
-        continue-on-error: true
         run: |
           pip install -r requirements.lock
-          pip install mypy==2.3.1
-          mypy app --ignore-missing-imports --explicit-package-bases 2>&1 | tail -n 30
+          mypy app
 
       - name: tsc --noEmit
         working-directory: frontend
