@@ -21,7 +21,7 @@ class InventoryItem(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, nullable=False)
-    category = Column(Enum(ItemCategory), nullable=False)
+    category: Column[ItemCategory] = Column(Enum(ItemCategory), nullable=False)
     unit = Column(String, default="kg")  # kg, pcs, liters, etc.
     current_stock = Column(Float, default=0)
     reorder_level = Column(Float, default=0)
@@ -37,7 +37,7 @@ class InventoryTransaction(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     item_id = Column(Integer, ForeignKey("inventory_items.id"))
-    transaction_type = Column(Enum(TransactionType))
+    transaction_type: Column[TransactionType] = Column(Enum(TransactionType))
     quantity = Column(Float)
     notes = Column(String)
     performed_by = Column(Integer, ForeignKey("users.id"))

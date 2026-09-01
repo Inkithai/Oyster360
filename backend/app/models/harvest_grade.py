@@ -14,7 +14,7 @@ class HarvestGrade(Base):
     id = Column(Integer, primary_key=True, index=True)
     harvest_id = Column(Integer, ForeignKey("harvests.id"))
     batch_id = Column(Integer, ForeignKey("batches.id"))
-    grade = Column(Enum(GradeLevel))
+    grade: Column[GradeLevel] = Column(Enum(GradeLevel))
     quantity_kg = Column(Float)
     price_per_kg = Column(Float)
     notes = Column(String)
