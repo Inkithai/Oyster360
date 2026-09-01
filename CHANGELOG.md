@@ -5,10 +5,25 @@ All notable changes to Oyster360 are documented here. This project follows [Keep
 ## [Unreleased]
 
 ### Added
+- `make ci-local` (`scripts/ci-local.sh`): reproduces every CI gate from a completely fresh clone — dependency install, dependency-sync check, backend lint/typecheck/tests with coverage, and frontend lint/typecheck/tests — with no Docker, no PostgreSQL/Redis and no API keys required. Verified end to end against a clean checkout.
+- `make deps-check` (`scripts/check_dependency_sync.py`): deterministic verification that the root and backend `pyproject.toml`, `requirements-runtime.txt`, `requirements-dev.txt`, `requirements.lock`, `package.json` and `package-lock.json` all agree. Replaces the recompile-and-diff CI step, which failed spuriously whenever an unpinned transitive dependency published a new release.
+- Autouse `block_outbound_sockets` test fixture: any non-`integration` test that opens a non-loopback socket now fails loudly, making the suite's offline guarantee enforced rather than conventional. `tests/test_offline_isolation.py` asserts the guarantee directly.
+- Test coverage for previously untested business-critical paths: Stripe webhook verification/idempotency/failure handling, subscription lifecycle, `require_subscription` plan enforcement, organization membership and tenant switching, and the AI, RAG, vision and assistant services. Backend coverage rose from ~77% to ~87%.
+- `backend/mypy.ini` with a documented, shrinking per-module baseline for files awaiting the SQLAlchemy `Mapped[...]` migration.
+- README sections for reproducing CI locally, the test-isolation guarantees, a layered architecture diagram, and the dependency-management policy.
 - `make fresh-start` one-command path for a machine that has never seen the repo: copies `.env.example` to `.env`, starts PostgreSQL and Redis, applies `alembic upgrade head`, and brings up the backend and frontend.
 - Quick Start documentation for `make fresh-start` and the expected backend log line `Uvicorn running on 0.0.0.0:8000`.
 
+### Fixed
+- RAG retrieval matched only whitespace-delimited tokens, so a question such as "what humidity?" never matched a chunk containing the bare word `humidity`; tokenization now strips punctuation.
+- `RAGService.chunk_text` looped forever when `overlap >= chunk_size` and emitted a spurious empty chunk for blank documents; both cases are now validated.
+- The CI lockfile job recompiled `requirements.lock` without the `dev` extra, so the committed lockfile could never match and the check was effectively dead.
+- README referenced a `backend/requirements.txt` that does not exist.
+
 ### Changed
+- `mypy` is now a **blocking** CI gate (`mypy app`) instead of an advisory step, and is pinned in `pyproject.toml`, `backend/pyproject.toml`, `requirements-dev.txt` and `requirements.lock`.
+- Backend coverage gate raised from 70% to 80% across CI, `make verify`, `make ci-local` and the coverage configuration.
+- `make verify` now runs flake8 and mypy in addition to the test lanes, matching CI exactly.
 - Maintainer roster lists ten people so each feature or fix can land as its own pull request with a named reviewer (see `AUTHORS.md` and `CONTRIBUTING.md`).
 
 ## [1.1.0] - 2026-08-24
