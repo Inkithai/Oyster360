@@ -28,7 +28,7 @@ All notable changes to Oyster360 are documented here. This project follows [Keep
 - Backend coverage gate raised from 70% to 80% across CI, `make verify`, `make ci-local` and the coverage configuration.
 - `make verify` now runs flake8 and mypy in addition to the test lanes, matching CI exactly.
 - Shrank the mypy baseline from 36 to 28 modules by annotating SQLAlchemy enum columns (`app/models/{user,batch,purchase,inventory,harvest_grade}.py`) and narrowing the organization dependencies' return type. Removed from the baseline: `app.api.webhooks`, `app.core.tenant`, `app.core.tenant_decorators`, and the five model modules.
-- Maintainer roster lists ten people so each feature or fix can land as its own pull request with a named reviewer (see `AUTHORS.md` and `CONTRIBUTING.md`).
+- **Corrected contributor provenance.** `AUTHORS.md` and `pyproject.toml` previously listed ten named maintainers; nine of those identities never contributed and had no GitHub accounts. They have been removed, leaving the single genuine author plus the automated tooling that appears in the history. A new [Repository history and provenance](README.md#repository-history-and-provenance) section documents the evidence, including four unrelated root commits, two pairs of byte-identical root trees, and 98 commits confined to three times of day. Commit timestamps were deliberately not rewritten.
 
 ## [1.1.0] - 2026-08-24
 

@@ -22,6 +22,7 @@ Oyster360 combines cultivation operations, environmental records, inventory, pur
 - [Project Structure](#project-structure)
 - [API and Service URLs](#api-and-service-urls)
 - [Deployment Notes](#deployment-notes)
+- [Repository history and provenance](#repository-history-and-provenance)
 - [Additional Documentation](#additional-documentation)
 
 ## Features
@@ -731,6 +732,66 @@ Main API families are mounted under `/api/auth`, `/api/batches`, `/api/recipes`,
 - Set `BACKEND_URL` to the backend's private service URL, such as `http://backend:8000`.
 - Configure Stripe to send signed events to `/api/webhooks/stripe`.
 - Back up PostgreSQL and test restoration procedures before production use.
+
+## Repository history and provenance
+
+**Summary: Oyster360 is the work of a single author. The Git commit history
+does not accurately reflect how or when the code was written, and should not
+be relied on as a development record.**
+
+This section exists so that anyone auditing, forking, or evaluating this
+repository has an accurate picture. The code is real and works; the history
+around it is not trustworthy, and pretending otherwise would be worse than
+saying so.
+
+### What is verifiable
+
+- The GitHub repository was created on **2026-07-07**.
+- The commit graph contains **four unrelated root (parentless) commits**, which
+  is not possible in a single continuous project history.
+- Two pairs of those roots have **byte-identical file trees** (identical Git
+  tree hashes) but different authors and dates more than seven months apart.
+- The earliest root commit is authored "Priya Nair", dated **2025-01-14** —
+  roughly eighteen months *before* the repository existed.
+- Another root commit is authored `Your Name <youremail@example.com>` with the
+  message **"copied from my gitlab"**, which is the most plausible account of
+  where the codebase actually came from.
+- 98 commits dated before 2026-04-08 occur at only **three distinct times of
+  day** (09:00, 12:00, 15:00), never on a weekend, with author and committer
+  timestamps identical to the second and gaps of only 3–6 days.
+- Five commits share the **exact same timestamp** (2026-08-24 04:12:50) under
+  five different author identities.
+- Twelve author identities in the history — Priya Nair, Marcus Lee, Sofia
+  Ramirez, Daniel Cho, Elena Vasquez, James Wright, Aisha Rahman, Thomas
+  Okonkwo, Maya Chen and variants — have **no GitHub accounts** and never
+  contributed. They were previously listed in `AUTHORS.md` and
+  `pyproject.toml`; those claims have been removed.
+
+### What this means
+
+The genuine contributors are [@Inkithai](https://github.com/Inkithai) plus
+automated tooling (an AI coding agent, Dependabot, and GitHub Actions). Any
+metric derived from contributor count, commit cadence, or project age will be
+misleading for this repository.
+
+The commit timestamps have deliberately **not** been rewritten. Rewriting them
+would replace one provenance problem with another and destroy the evidence
+above. The history is left as-is and documented instead.
+
+### What is trustworthy
+
+The current state of the codebase stands on its own and can be verified
+directly rather than taken on trust:
+
+```bash
+git clone https://github.com/Inkithai/Oyster360.git
+cd Oyster360
+make ci-local
+```
+
+That runs lint, type checking, the full offline test suite with an enforced
+coverage gate, and dependency-consistency checks from a clean checkout. See
+[Reproducing CI Locally](#reproducing-ci-locally).
 
 ## Additional Documentation
 

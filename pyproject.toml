@@ -14,13 +14,6 @@ requires-python = ">=3.11"
 license = { text = "All rights reserved" }
 authors = [
     { name = "Inkithai Meiyalagan" },
-    { name = "Priya Nair" },
-    { name = "Marcus Lee" },
-    { name = "Sofia Ramirez" },
-    { name = "Daniel Cho" },
-    { name = "Elena Vasquez" },
-    { name = "James Wright" },
-    { name = "Aisha Rahman" },
 ]
 keywords = ["fastapi", "nextjs", "mushroom", "farm", "saas", "multi-tenant"]
 classifiers = [
