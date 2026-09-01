@@ -21,8 +21,8 @@ def _timestamp(value) -> datetime | None:
 
 def _organization_id(metadata: dict, db: Session) -> int:
     try:
-        organization_id = int(metadata.get("organization_id"))
-    except (TypeError, ValueError):
+        organization_id = int(metadata["organization_id"])
+    except (KeyError, TypeError, ValueError):
         raise HTTPException(
             status_code=400,
             detail="Stripe event is missing organization metadata",

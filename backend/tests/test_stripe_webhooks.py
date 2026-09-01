@@ -136,6 +136,30 @@ def test_event_with_malformed_organization_metadata_is_rejected(
     assert "organization metadata" in response.json()["detail"]
 
 
+def test_event_with_absent_organization_metadata_key_is_rejected(
+    db_session, organization, deliver
+):
+    """The key is missing entirely, not just malformed."""
+    event = _checkout_event(organization.id)
+    event["data"]["object"]["metadata"] = {"plan": "pro"}
+
+    response = deliver(event)
+
+    assert response.status_code == 400
+    assert "organization metadata" in response.json()["detail"]
+    assert db_session.query(Subscription).count() == 0
+
+
+def test_event_with_no_metadata_at_all_is_rejected(db_session, organization, deliver):
+    event = _checkout_event(organization.id)
+    event["data"]["object"].pop("metadata")
+
+    response = deliver(event)
+
+    assert response.status_code == 400
+    assert db_session.query(Subscription).count() == 0
+
+
 def test_subscription_updated_syncs_period_and_cancellation(db_session, organization, deliver):
     deliver(_checkout_event(organization.id))
 
