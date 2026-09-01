@@ -17,7 +17,7 @@ def get_current_organization(current_user: User = Depends(get_current_user)) -> 
             status_code=status.HTTP_403_FORBIDDEN,
             detail="An active organization is required",
         )
-    return current_user.current_organization_id
+    return int(current_user.current_organization_id)
 
 
 def require_organization_access(
