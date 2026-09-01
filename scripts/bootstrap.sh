@@ -14,6 +14,14 @@ command -v docker >/dev/null 2>&1 || {
   echo "docker is required. Install Docker Engine 24+ with Compose v2." >&2
   exit 1
 }
+docker compose version >/dev/null 2>&1 || {
+  echo "Docker Compose v2 is required (try: docker compose version)." >&2
+  exit 1
+}
+command -v curl >/dev/null 2>&1 || {
+  echo "curl is required to verify the API health endpoint." >&2
+  exit 1
+}
 
 # 1. Environment file --------------------------------------------------------
 if [ ! -f .env ]; then
@@ -24,7 +32,7 @@ else
 fi
 
 # 2. Random JWT secret if the placeholder is still in place ------------------
-if grep -q "^JWT_SECRET=replace-this-with-a-random-secret" .env; then
+if grep -qE '^JWT_SECRET=replace-this-with-a-random-secret' .env; then
   if command -v openssl >/dev/null 2>&1; then
     secret="$(openssl rand -hex 32)"
     sed -i.bak "s|^JWT_SECRET=.*|JWT_SECRET=${secret}|" .env && rm -f .env.bak

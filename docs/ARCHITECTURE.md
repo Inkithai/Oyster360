@@ -4,13 +4,13 @@
 
 Oyster360 follows a modern three-tier architecture:
 
-1. **Presentation Layer** — Next.js 15
-2. **Application Layer** — FastAPI
-3. **Data Layer** — PostgreSQL + pgvector
+1. **Presentation Layer** — Next.js 16 App Router, React 19, and TanStack Query
+2. **Application Layer** — FastAPI modular monolith with domain services and Celery workers
+3. **Data Layer** — PostgreSQL 16 + pgvector, with Redis for caching and task transport
 
 ## Frontend Architecture
 
-- **Framework**: Next.js 15 (App Router)
+- **Framework**: Next.js 16 (App Router)
 - **State Management**: TanStack Query (server state) + Zustand (client state)
 - **Forms**: React Hook Form + Zod
 - **Styling**: Tailwind CSS + shadcn/ui
