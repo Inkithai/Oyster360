@@ -62,6 +62,14 @@ def create_rate_limit_middleware(max_requests: int = 100, window_seconds: int = 
                 )
         except redis.RedisError:
             logger.exception("Rate limiter Redis unavailable; allowing request")
+        except (OSError, RuntimeError):
+            # Covers transport-level failures (connection reset, broken pipe)
+            # and asyncio event-loop mismatches that surface as bare
+            # RuntimeErrors from redis-py's asyncio transport rather than a
+            # redis.RedisError subclass (e.g. a pooled connection reused
+            # across a different event loop). Either way Redis is not
+            # answering reliably, so fail open per this module's contract.
+            logger.exception("Rate limiter Redis connection failed; allowing request")
         return await call_next(request)
 
     return middleware
