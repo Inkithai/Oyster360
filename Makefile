@@ -1,6 +1,6 @@
 # Oyster360 developer shortcuts. The same commands live in README.md; run
 # `make help` to list targets.
-.PHONY: help ci-local deps-check setup bootstrap fresh-start up down logs ps migrate seed verify quality test test-unit test-backend test-frontend test-integration test-e2e lint
+.PHONY: help ci-local deps-check deps-sync sync-deps setup bootstrap fresh-start up down logs ps migrate seed verify quality test test-unit test-backend test-frontend test-integration test-e2e lint
 
 setup: ## Prepare a fresh clone (creates .env and starts the Docker stack)
 	./scripts/bootstrap.sh
@@ -48,6 +48,11 @@ ci-local: ## Reproduce every CI gate from a fresh clone (installs deps, no Docke
 
 deps-check: ## Verify dependency manifests and lockfiles agree
 	python3 scripts/check_dependency_sync.py
+
+deps-sync: ## Synchronize dependency manifests and regenerate lockfiles
+	python3 scripts/sync_dependencies.py
+
+sync-deps: deps-sync ## Alias for deps-sync
 
 verify: ## Run the local checks CI enforces (assumes deps are already installed)
 	python3 scripts/check_dependency_sync.py

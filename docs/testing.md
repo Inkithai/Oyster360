@@ -86,8 +86,9 @@ test genuinely needs infrastructure, mark it `@pytest.mark.integration`.
 
 1. **Lockfile reproducibility** — `uv lock --check` (root and backend),
    `scripts/check_dependency_sync.py`, `pip install --dry-run -r
-   requirements.lock`, and `npm ci --dry-run`. On Dependabot PRs the uv
-   lockfiles are regenerated and pushed back to the branch instead of failing.
+   requirements.lock`, and `npm ci --dry-run`. On Dependabot PRs manifests
+   and lockfiles are automatically synchronized, regenerated, and pushed back
+   to the branch instead of failing.
 2. **Lint** — flake8 (backend) and `eslint --max-warnings=0` (frontend).
 3. **Typecheck** — `mypy app` and `tsc --noEmit`. Both are blocking.
 4. **Test** — fast offline lane, full suite with the 80% coverage gate, Vitest

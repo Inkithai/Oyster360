@@ -148,32 +148,10 @@ jobs:
       - name: Install uv
         run: pip install uv
 
-      - name: uv lock --check (root PEP 621 manifest)
+      - name: Synchronize manifests and regenerate lockfiles for Dependabot
+        if: env.IS_DEPENDABOT == 'true'
         run: |
-          if ! uv lock --check; then
-            if [ "$IS_DEPENDABOT" = "true" ]; then
-              echo "::notice::root uv.lock out of sync with pyproject.toml (expected on Dependabot PRs); regenerating."
-              uv lock
-            else
-              echo "::error::root uv.lock is out of sync with pyproject.toml."
-              echo "Regenerate it with: uv lock"
-              exit 1
-            fi
-          fi
-
-      - name: uv lock --check (backend)
-        working-directory: backend
-        run: |
-          if ! uv lock --check; then
-            if [ "$IS_DEPENDABOT" = "true" ]; then
-              echo "::notice::backend/uv.lock out of sync (expected on Dependabot PRs); regenerating."
-              uv lock
-            else
-              echo "::error::backend/uv.lock does not match backend/pyproject.toml."
-              echo "Regenerate it with: cd backend && uv lock"
-              exit 1
-            fi
-          fi
+          python scripts/sync_dependencies.py
 
       - name: Commit regenerated lockfiles to the Dependabot branch
         if: >-
@@ -183,12 +161,32 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add uv.lock backend/uv.lock backend/requirements.lock
+          git add pyproject.toml backend/pyproject.toml setup.cfg backend/setup.cfg \
+                  backend/requirements-runtime.txt backend/requirements-dev.txt \
+                  backend/requirements.lock uv.lock backend/uv.lock \
+                  frontend/package.json frontend/package-lock.json
           if git diff --cached --quiet; then
             echo "Lockfiles already in sync; nothing to commit."
           else
             git commit -m "chore(deps): regenerate lockfiles for Dependabot update"
             git push || echo "::warning::Could not push regenerated lockfiles; continuing verification against the regenerated files."
+          fi
+
+      - name: uv lock --check (root PEP 621 manifest)
+        run: |
+          if ! uv lock --check; then
+            echo "::error::root uv.lock is out of sync with pyproject.toml."
+            echo "Regenerate it with: uv lock"
+            exit 1
+          fi
+
+      - name: uv lock --check (backend)
+        working-directory: backend
+        run: |
+          if ! uv lock --check; then
+            echo "::error::backend/uv.lock does not match backend/pyproject.toml."
+            echo "Regenerate it with: cd backend && uv lock"
+            exit 1
           fi
 
       - name: Verify dependency manifests and lockfiles agree
