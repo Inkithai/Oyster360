@@ -206,7 +206,6 @@ jobs:
     name: typecheck
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    needs: [lint]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7

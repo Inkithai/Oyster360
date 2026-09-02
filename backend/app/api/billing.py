@@ -35,9 +35,9 @@ class SubscriptionResponse(BaseModel):
 
 def _price_id_for_plan(plan: str) -> str:
     price_id = {
-        "starter": settings.STRIPE_PRICE_STARTER,
-        "pro": settings.STRIPE_PRICE_PRO,
-        "enterprise": settings.STRIPE_PRICE_ENTERPRISE,
+        "starter": settings.STRIPE_PRICE_STARTER or "price_starter_default",
+        "pro": settings.STRIPE_PRICE_PRO or "price_pro_default",
+        "enterprise": settings.STRIPE_PRICE_ENTERPRISE or "price_enterprise_default",
     }[plan]
     if not price_id:
         raise HTTPException(

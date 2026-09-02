@@ -12,6 +12,11 @@ class FakeRedis:
     def get(self, key):
         return self.store.get(key)
 
+    def set(self, key, value, ex=None):
+        self.last_ttl = ex
+        self.store[key] = value
+        return True
+
     def setex(self, key, ttl, value):
         self.last_ttl = ttl
         self.store[key] = value
@@ -22,6 +27,9 @@ class FakeRedis:
 
 class ExplodingRedis:
     def get(self, key):
+        raise RuntimeError("connection lost")
+
+    def set(self, key, value, ex=None):
         raise RuntimeError("connection lost")
 
     def setex(self, key, ttl, value):

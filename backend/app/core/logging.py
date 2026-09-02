@@ -9,7 +9,10 @@ import logging
 import sys
 from datetime import datetime, timezone
 
-from pythonjsonlogger import jsonlogger
+try:
+    from pythonjsonlogger import json as jsonlogger
+except ImportError:
+    from pythonjsonlogger import jsonlogger  # type: ignore[no-redef]
 
 
 class StructuredJsonFormatter(jsonlogger.JsonFormatter):
