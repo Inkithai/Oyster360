@@ -837,6 +837,11 @@ CI additionally runs `uv lock --check` on both `uv.lock` files, `pip install --d
 ### Refreshing the locks
 
 ```bash
+# Automatic: synchronize manifests across the repo and regenerate all lockfiles
+make deps-sync
+make deps-check
+
+# Or manually:
 # Python: after editing pyproject.toml dependency pins
 uv pip compile pyproject.toml --extra dev --output-file backend/requirements.lock
 uv lock && (cd backend && uv lock)

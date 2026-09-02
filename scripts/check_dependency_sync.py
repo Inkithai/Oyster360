@@ -182,6 +182,20 @@ def check_node_manifests() -> None:
 
 
 def main() -> int:
+    import argparse
+    parser = argparse.ArgumentParser(description="Verify that dependency manifests and lockfiles agree.")
+    parser.add_argument("--fix", action="store_true", help="Automatically synchronize manifests and lockfiles.")
+    args = parser.parse_args()
+
+    if args.fix:
+        if str(ROOT / "scripts") not in sys.path:
+            sys.path.insert(0, str(ROOT / "scripts"))
+        from sync_dependencies import sync_python_manifests, recompile_lockfiles, sync_node_manifests
+        sync_python_manifests()
+        recompile_lockfiles()
+        sync_node_manifests()
+        errors.clear()
+
     check_python_manifests()
     check_node_manifests()
 
@@ -189,6 +203,7 @@ def main() -> int:
         print("Dependency manifests are out of sync:\n", file=sys.stderr)
         for item in errors:
             print(f"  - {item}", file=sys.stderr)
+        print("\nFix automatically with: make deps-sync (or python scripts/sync_dependencies.py)", file=sys.stderr)
         return 1
 
     print("Dependency manifests and lockfiles are consistent:")
