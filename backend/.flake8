@@ -7,4 +7,8 @@ show-source = true
 count = true
 exclude =
     .venv,
-    alembic/versions
+    __pycache__,
+    alembic/versions,
+    alembic/versions/*,
+    backend/alembic/versions,
+    backend/alembic/versions/*
