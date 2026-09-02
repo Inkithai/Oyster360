@@ -28,7 +28,7 @@ class CacheService:
         """Set value in cache"""
         try:
             ttl = ttl or self.default_ttl
-            self.redis.setex(key, ttl, json.dumps(value))
+            self.redis.set(key, json.dumps(value), ex=ttl)
             return True
         except Exception:
             return False
