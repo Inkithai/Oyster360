@@ -766,6 +766,16 @@ saying so.
   Okonkwo, Maya Chen and variants — have **no GitHub accounts** and never
   contributed. They were previously listed in `AUTHORS.md` and
   `pyproject.toml`; those claims have been removed.
+- The release tags do not form a chronology, and three of them cannot be
+  genuine: `v0.7.0`, `v0.8.0` and `v0.9.0` resolve to commits dated
+  **2026-06-19**, **2026-06-15** and **2026-04-24** — all before the repository
+  was created — while `v0.1.0` resolves to a commit dated **2026-08-21**, later
+  than every `v0.9.0` target.
+- The published `v1.0.0` release describes itself as the "first stable tag on
+  the **rewritten maintenance history**".
+- `CHANGELOG.md` previously carried a dated release timeline covering
+  `0.1.0` (2025-08-16) through `0.9.0` (2026-07-18). Those dates have been
+  removed and the `0.x` headings now read `date unrecorded`.
 
 ### What this means
 
@@ -777,6 +787,14 @@ misleading for this repository.
 The commit timestamps have deliberately **not** been rewritten. Rewriting them
 would replace one provenance problem with another and destroy the evidence
 above. The history is left as-is and documented instead.
+
+The same reasoning does not apply to claims that are false in the *current*
+tree. Invented release dates in `CHANGELOG.md`, and the fabricated maintainer
+roster that previously appeared in `AUTHORS.md` and `pyproject.toml`, are
+present-tense assertions rather than historical artifacts: leaving them in place
+would make the repository state itself inaccurate while removing nothing that
+the commit objects preserve. They are corrected, and the correction is recorded
+here so the record stays complete.
 
 ### What is trustworthy
 
