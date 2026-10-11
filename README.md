@@ -766,16 +766,26 @@ saying so.
   Okonkwo, Maya Chen and variants — have **no GitHub accounts** and never
   contributed. They were previously listed in `AUTHORS.md` and
   `pyproject.toml`; those claims have been removed.
-- The release tags do not form a chronology, and three of them cannot be
-  genuine: `v0.7.0`, `v0.8.0` and `v0.9.0` resolve to commits dated
-  **2026-06-19**, **2026-06-15** and **2026-04-24** — all before the repository
-  was created — while `v0.1.0` resolves to a commit dated **2026-08-21**, later
-  than every `v0.9.0` target.
-- The published `v1.0.0` release describes itself as the "first stable tag on
-  the **rewritten maintenance history**".
+- The release tags never formed a chronology. `v0.7.0`, `v0.8.0` and `v0.9.0`
+  pointed at commits dated **2026-06-19**, **2026-06-15** and **2026-04-24** —
+  before the repository was created — while `v0.1.0` pointed at a commit dated
+  **2026-08-21**, later than every `v0.9.0` target. The tagger timestamps of
+  `v0.6.0` and `v0.7.0` were **earlier than the commits they tagged**, which a
+  tag created in normal use cannot be.
+- **The tags `v0.1.0` through `v0.9.0` have since been deleted** as fabricated
+  release markers; only `v1.0.0` and `v1.1.0` remain. Deleting a ref destroys
+  the easiest way to inspect what it pointed at, so the tag objects, their
+  taggers and their targets are recorded by hash in
+  [the evidence document](docs/history_provenance_evidence.md).
+- The published `v1.0.0` release described itself as the "first stable tag on
+  the **rewritten maintenance history**". That phrasing has been replaced with a
+  precise pointer to this section.
 - `CHANGELOG.md` previously carried a dated release timeline covering
   `0.1.0` (2025-08-16) through `0.9.0` (2026-07-18). Those dates have been
   removed and the `0.x` headings now read `date unrecorded`.
+- **181 of the 329 commits** on `main` (55%) remain attributed to fabricated
+  identities. Fixing that means rewriting history, which has not been done — see
+  below.
 
 ### What this means
 
@@ -789,12 +799,27 @@ would replace one provenance problem with another and destroy the evidence
 above. The history is left as-is and documented instead.
 
 The same reasoning does not apply to claims that are false in the *current*
-tree. Invented release dates in `CHANGELOG.md`, and the fabricated maintainer
-roster that previously appeared in `AUTHORS.md` and `pyproject.toml`, are
-present-tense assertions rather than historical artifacts: leaving them in place
-would make the repository state itself inaccurate while removing nothing that
-the commit objects preserve. They are corrected, and the correction is recorded
-here so the record stays complete.
+tree. Invented release dates in `CHANGELOG.md`, the fabricated maintainer
+roster that previously appeared in `AUTHORS.md` and `pyproject.toml`, and the
+fabricated `v0.x` release tags are present-tense assertions rather than
+historical artifacts: leaving them in place would make the repository state
+itself inaccurate while removing nothing that the commit objects preserve. They
+are corrected, and each correction is recorded here so the record stays
+complete.
+
+That is the line this repository draws: **false claims about the present are
+removed, fabricated history is kept and documented.** The evidence for the
+factual claims above, including the tag objects that were deleted and the commit
+hashes that back every one of them, is in
+[docs/history_provenance_evidence.md](docs/history_provenance_evidence.md),
+which is the durable record now that some of those refs are gone.
+
+Removing the fabricated authorship from the history itself is a separate,
+destructive operation that has **not** been performed. It would change every
+commit hash, invalidate every fork and clone, and replace a history that anyone
+can audit with one that nobody can. The tested procedure, together with its
+costs and the reasons it may not be worth it, is in
+[docs/history_rewrite.md](docs/history_rewrite.md).
 
 ### What is trustworthy
 
@@ -820,6 +845,8 @@ coverage gate, and dependency-consistency checks from a clean checkout. See
 - [Product Overview](docs/PRODUCT_OVERVIEW.md)
 - [User Guide](docs/USER_GUIDE.md)
 - [Roadmap Status](docs/ROADMAP_STATUS.md)
+- [History provenance: evidence record](docs/history_provenance_evidence.md)
+- [Rewriting the repository history](docs/history_rewrite.md)
 
 ## Reproducible Dependencies
 

@@ -55,6 +55,10 @@ All notable changes to Oyster360 are documented here. This project follows [Keep
 - Shrank the mypy baseline from 36 to 28 modules by annotating SQLAlchemy enum columns (`app/models/{user,batch,purchase,inventory,harvest_grade}.py`) and narrowing the organization dependencies' return type. Removed from the baseline: `app.api.webhooks`, `app.core.tenant`, `app.core.tenant_decorators`, and the five model modules.
 - **Corrected contributor provenance.** `AUTHORS.md` and `pyproject.toml` previously listed ten named maintainers; nine of those identities never contributed and had no GitHub accounts. They have been removed, leaving the single genuine author plus the automated tooling that appears in the history. A new [Repository history and provenance](README.md#repository-history-and-provenance) section documents the evidence, including four unrelated root commits, two pairs of byte-identical root trees, and 98 commits confined to three times of day. Commit timestamps were deliberately not rewritten.
 - **Corrected the release timeline.** This file previously presented releases `0.1.0` through `0.9.0` on a dated, evenly spaced schedule from 2025-08-16 to 2026-07-18. Eight of those nine dates fall before the repository was created on 2026-07-07, and the `v0.x` tags contradict them further: `v0.9.0` resolves to a 2026-04-24 commit while `v0.1.0` resolves to a 2026-08-21 commit, so the tags do not order by version, and the targets of `v0.7.0`, `v0.8.0` and `v0.9.0` predate the repository. The dates have been removed from the `0.x` headings, which now read `date unrecorded`; the feature content is unchanged and verifiable in the codebase. Unlike the commit timestamps, these dates were assertions in the working tree rather than part of the historical record, so correcting them removes a false claim without erasing any evidence.
+- **Removed the fabricated release tags.** `v0.1.0` through `v0.9.0` were deleted. Three pointed at commits dated before the repository existed, and the tagger timestamps of `v0.6.0` and `v0.7.0` preceded the commits they tagged — a tag cannot be created before its target. `v1.0.0` and `v1.1.0` remain. The tag objects, taggers, targets and the impossible dates are recorded by hash in [`docs/history_provenance_evidence.md`](docs/history_provenance_evidence.md), so removing the refs did not remove the evidence.
+- **Corrected the `v1.0.0` release notes**, which described the release as the "first stable tag on the rewritten maintenance history", to a precise pointer to the README provenance section.
+- [`docs/history_provenance_evidence.md`](docs/history_provenance_evidence.md): the raw evidence behind the provenance disclosure — every fabricated identity and address, the four root commits, the timestamp collisions, and the full tag table with hashes.
+- [`docs/history_rewrite.md`](docs/history_rewrite.md) and [`scripts/rewrite_history.sh`](scripts/rewrite_history.sh): a tested, opt-in procedure for removing the fabricated authorship and the duplicate roots from the history itself. It never pushes; it writes a full bundle backup plus a raw text record of the old history before changing an object; and it documents why a rewrite cannot recover the true dates and cannot leave the history any more verifiable than it is now.
 
 ## [1.1.0] - 2026-08-24
 
@@ -150,13 +154,11 @@ All notable changes to Oyster360 are documented here. This project follows [Keep
 
 [Unreleased]: https://github.com/Inkithai/Oyster360/compare/v1.1.0...HEAD
 [1.1.0]: https://github.com/Inkithai/Oyster360/compare/v1.0.0...v1.1.0
-[1.0.0]: https://github.com/Inkithai/Oyster360/compare/v0.9.0...v1.0.0
-[0.9.0]: https://github.com/Inkithai/Oyster360/compare/v0.8.0...v0.9.0
-[0.8.0]: https://github.com/Inkithai/Oyster360/compare/v0.7.0...v0.8.0
-[0.7.0]: https://github.com/Inkithai/Oyster360/compare/v0.6.0...v0.7.0
-[0.6.0]: https://github.com/Inkithai/Oyster360/compare/v0.5.0...v0.6.0
-[0.5.0]: https://github.com/Inkithai/Oyster360/compare/v0.4.0...v0.5.0
-[0.4.0]: https://github.com/Inkithai/Oyster360/compare/v0.3.0...v0.4.0
-[0.3.0]: https://github.com/Inkithai/Oyster360/compare/v0.2.0...v0.3.0
-[0.2.0]: https://github.com/Inkithai/Oyster360/compare/v0.1.0...v0.2.0
-[0.1.0]: https://github.com/Inkithai/Oyster360/releases/tag/v0.1.0
+[1.0.0]: https://github.com/Inkithai/Oyster360/releases/tag/v1.0.0
+
+<!--
+No link definitions for 0.1.0 through 0.9.0. Those tags were fabricated release
+markers and have been deleted, so `compare/` links for them no longer resolve.
+The tag objects, taggers and targets are recorded by hash in
+docs/history_provenance_evidence.md.
+-->

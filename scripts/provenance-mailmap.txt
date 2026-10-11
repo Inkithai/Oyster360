@@ -1,0 +1,40 @@
+# Mailmap for scripts/rewrite_history.sh
+#
+# Maps fabricated author identities onto the person who actually wrote the
+# code. Read it before you run the script: this file decides what the rewritten
+# history will claim, and every line is a judgement call, not a fact.
+#
+# Syntax (git mailmap):
+#   Proper Name <proper@email>  Commit Name <commit@email>
+#
+# The mapping below attributes the work of twelve identities that never existed
+# to the repository owner. That is an inference, and a defensible one: the code
+# came from the owner's private GitLab ("copied from my gitlab"), the identities
+# have no GitHub accounts and never contributed, and the alternative — leaving
+# 55% of the history attributed to fictional people — is worse. It is still an
+# inference. If you would rather record those commits as unattributed, replace
+# the target address on every line below with a marker such as
+#   Unattributed <unattributed@invalid>
+# and say so in the README. Do not leave this file unexamined.
+
+# --- repository owner: one canonical form -------------------------------------
+Inkithai <108919130+Inkithai@users.noreply.github.com> <108919130+Inkithai@users.noreply.github.com>
+Inkithai <108919130+Inkithai@users.noreply.github.com> Inkithai Meiyalagan <108919130+Inkithai@users.noreply.github.com>
+
+# --- fabricated identities ----------------------------------------------------
+Inkithai <108919130+Inkithai@users.noreply.github.com> Priya Nair <priya.nair@oyster360.dev>
+Inkithai <108919130+Inkithai@users.noreply.github.com> Priya Nair <priya.nair.swe@gmail.com>
+Inkithai <108919130+Inkithai@users.noreply.github.com> Marcus Lee <marcus.lee@oyster360.dev>
+Inkithai <108919130+Inkithai@users.noreply.github.com> Marcus Lee <marcus.lee.eng@gmail.com>
+Inkithai <108919130+Inkithai@users.noreply.github.com> Sofia Ramirez <sofia.ramirez@oyster360.dev>
+Inkithai <108919130+Inkithai@users.noreply.github.com> Sofia Ramirez <sofia.ramirez.dev@gmail.com>
+Inkithai <108919130+Inkithai@users.noreply.github.com> Daniel Cho <daniel.cho@oyster360.dev>
+Inkithai <108919130+Inkithai@users.noreply.github.com> Daniel Cho <daniel.cho.codes@gmail.com>
+Inkithai <108919130+Inkithai@users.noreply.github.com> James Wright <james.wright@oyster360.dev>
+Inkithai <108919130+Inkithai@users.noreply.github.com> James Wright <james.wright.dev@outlook.com>
+Inkithai <108919130+Inkithai@users.noreply.github.com> Elena Vasquez <elena.vasquez.eng@gmail.com>
+Inkithai <108919130+Inkithai@users.noreply.github.com> Aisha Rahman <aisha.rahman@oyster360.dev>
+Inkithai <108919130+Inkithai@users.noreply.github.com> Aisha Rahman <aisha.rahman.dev@gmail.com>
+Inkithai <108919130+Inkithai@users.noreply.github.com> Thomas Okonkwo <thomas.okonkwo@oyster360.dev>
+Inkithai <108919130+Inkithai@users.noreply.github.com> Maya Chen <maya.chen@oyster360.dev>
+Inkithai <108919130+Inkithai@users.noreply.github.com> Your Name <youremail@example.com>
