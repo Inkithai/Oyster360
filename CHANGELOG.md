@@ -2,6 +2,20 @@
 
 All notable changes to Oyster360 are documented here. This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and uses Semantic Versioning.
 
+> **Release dates before `1.0.0` are not recorded here.** Earlier revisions of
+> this file carried a dated timeline running from `0.1.0` (2025-08-16) to
+> `0.9.0` (2026-07-18). That timeline cannot be accurate: eight of those nine
+> dates precede the creation of this GitHub repository on 2026-07-07, and the
+> `v0.x` tags do not form a chronology either — `v0.1.0` resolves to a commit
+> dated 2026-08-21 while `v0.9.0` resolves to one dated 2026-04-24, and the
+> targets of `v0.7.0`, `v0.8.0` and `v0.9.0` predate the repository itself.
+>
+> The feature content of those entries is retained; the invented dates are not,
+> and the headings read `date unrecorded` rather than carry a date implying a
+> release history that did not happen. See the
+> [Repository history and provenance](README.md#repository-history-and-provenance)
+> section of the README.
+
 ## [Unreleased]
 
 ### Added
@@ -40,6 +54,12 @@ All notable changes to Oyster360 are documented here. This project follows [Keep
 - `make verify` now runs flake8 and mypy in addition to the test lanes, matching CI exactly.
 - Shrank the mypy baseline from 36 to 28 modules by annotating SQLAlchemy enum columns (`app/models/{user,batch,purchase,inventory,harvest_grade}.py`) and narrowing the organization dependencies' return type. Removed from the baseline: `app.api.webhooks`, `app.core.tenant`, `app.core.tenant_decorators`, and the five model modules.
 - **Corrected contributor provenance.** `AUTHORS.md` and `pyproject.toml` previously listed ten named maintainers; nine of those identities never contributed and had no GitHub accounts. They have been removed, leaving the single genuine author plus the automated tooling that appears in the history. A new [Repository history and provenance](README.md#repository-history-and-provenance) section documents the evidence, including four unrelated root commits, two pairs of byte-identical root trees, and 98 commits confined to three times of day. Commit timestamps were deliberately not rewritten.
+- **Corrected the release timeline.** This file previously presented releases `0.1.0` through `0.9.0` on a dated, evenly spaced schedule from 2025-08-16 to 2026-07-18. Eight of those nine dates fall before the repository was created on 2026-07-07, and the `v0.x` tags contradict them further: `v0.9.0` resolves to a 2026-04-24 commit while `v0.1.0` resolves to a 2026-08-21 commit, so the tags do not order by version, and the targets of `v0.7.0`, `v0.8.0` and `v0.9.0` predate the repository. The dates have been removed from the `0.x` headings, which now read `date unrecorded`; the feature content is unchanged and verifiable in the codebase. Unlike the commit timestamps, these dates were assertions in the working tree rather than part of the historical record, so correcting them removes a false claim without erasing any evidence.
+- **Removed the fabricated release tags.** `v0.1.0` through `v0.9.0` were deleted. Three pointed at commits dated before the repository existed, and the tagger timestamps of `v0.6.0` and `v0.7.0` preceded the commits they tagged — a tag cannot be created before its target. `v1.0.0` and `v1.1.0` remain. The tag objects, taggers, targets and the impossible dates are recorded by hash in [`docs/history_provenance_evidence.md`](docs/history_provenance_evidence.md), so removing the refs did not remove the evidence.
+- **Corrected the `v1.0.0` release notes**, which described the release as the "first stable tag on the rewritten maintenance history", to a precise pointer to the README provenance section.
+- [`docs/history_provenance_evidence.md`](docs/history_provenance_evidence.md): the raw evidence behind the provenance disclosure — every fabricated identity and address, the four root commits, the timestamp collisions, and the full tag table with hashes.
+- [`ATTRIBUTION.md`](ATTRIBUTION.md): the human-readable provenance record. States the single genuine author and the automated tooling, names the ten fabricated identities that must never be credited, records what their 181 commits actually changed, and says explicitly that no date and no split of work between individuals can be established.
+- [`docs/history_rewrite.md`](docs/history_rewrite.md) and [`scripts/rewrite_history.sh`](scripts/rewrite_history.sh): a tested, opt-in procedure for removing fabricated metadata from the history. It never pushes; it writes a full bundle backup plus a raw text record of the old history before changing an object; and it implements the rule that **nothing is written that is not true**. Since Git requires an author and a date on every commit, and neither can be recovered for the fabricated commits, the recommended path replaces the history with a single import commit whose tree is byte-identical, whose author is the real owner, and whose date is when it was created. The alternative in-place rewrite, which would attribute 181 commits to the owner on inference while keeping every fabricated timestamp, is documented but not recommended. An earlier date-clamping approach was deleted: moving impossible dates to a plausible marker replaces an obviously false value with a quietly false one.
 
 ## [1.1.0] - 2026-08-24
 
@@ -84,64 +104,62 @@ All notable changes to Oyster360 are documented here. This project follows [Keep
 - Dashboard renders API values exactly and displays honest error/empty states.
 - Yield prediction aggregates real Harvest and EnvironmentLog records.
 
-## [0.9.0] - 2026-07-18
+## [0.9.0] - date unrecorded
 
 ### Added
 - Playwright end-to-end specs for login and dashboard (network-level API mocks).
 - Login, register, and reset-password page specs.
 
-## [0.8.0] - 2026-06-20
+## [0.8.0] - date unrecorded
 
 ### Added
 - Trivy filesystem scanning and Dependabot for npm, pip, and GitHub Actions.
 - Coverage-gated backend pytest (`--cov-fail-under=60`).
 
-## [0.7.0] - 2026-05-23
+## [0.7.0] - date unrecorded
 
 ### Added
 - Stripe billing, signed webhooks, and subscription lifecycle.
 - GDPR export/delete compliance endpoints.
 
-## [0.6.0] - 2026-04-25
+## [0.6.0] - date unrecorded
 
 ### Added
 - Next.js App Router frontend with role-aware navigation.
 - Reusable UI components, TanStack Query client, and Zod forms.
 
-## [0.5.0] - 2026-03-28
+## [0.5.0] - date unrecorded
 
 ### Added
 - FastAPI routers for batches, recipes, inventory, purchases, analytics, and AI.
 
-## [0.4.0] - 2026-02-21
+## [0.4.0] - date unrecorded
 
 ### Added
 - Domain services for inventory movements, harvest grading, MFA, and onboarding.
 
-## [0.3.0] - 2026-01-24
+## [0.3.0] - date unrecorded
 
 ### Added
 - SQLAlchemy models for organizations, farms, batches, harvests, and inventory.
 
-## [0.2.0] - 2025-11-15
+## [0.2.0] - date unrecorded
 
 ### Added
 - Multi-tenant middleware, rate limiting, and JWT authentication utilities.
 
-## [0.1.0] - 2025-08-16
+## [0.1.0] - date unrecorded
 
 ### Added
 - Initial repository, Docker Compose topology, backend configuration, and product docs.
 
 [Unreleased]: https://github.com/Inkithai/Oyster360/compare/v1.1.0...HEAD
 [1.1.0]: https://github.com/Inkithai/Oyster360/compare/v1.0.0...v1.1.0
-[1.0.0]: https://github.com/Inkithai/Oyster360/compare/v0.9.0...v1.0.0
-[0.9.0]: https://github.com/Inkithai/Oyster360/compare/v0.8.0...v0.9.0
-[0.8.0]: https://github.com/Inkithai/Oyster360/compare/v0.7.0...v0.8.0
-[0.7.0]: https://github.com/Inkithai/Oyster360/compare/v0.6.0...v0.7.0
-[0.6.0]: https://github.com/Inkithai/Oyster360/compare/v0.5.0...v0.6.0
-[0.5.0]: https://github.com/Inkithai/Oyster360/compare/v0.4.0...v0.5.0
-[0.4.0]: https://github.com/Inkithai/Oyster360/compare/v0.3.0...v0.4.0
-[0.3.0]: https://github.com/Inkithai/Oyster360/compare/v0.2.0...v0.3.0
-[0.2.0]: https://github.com/Inkithai/Oyster360/compare/v0.1.0...v0.2.0
-[0.1.0]: https://github.com/Inkithai/Oyster360/releases/tag/v0.1.0
+[1.0.0]: https://github.com/Inkithai/Oyster360/releases/tag/v1.0.0
+
+<!--
+No link definitions for 0.1.0 through 0.9.0. Those tags were fabricated release
+markers and have been deleted, so `compare/` links for them no longer resolve.
+The tag objects, taggers and targets are recorded by hash in
+docs/history_provenance_evidence.md.
+-->

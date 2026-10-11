@@ -735,37 +735,63 @@ Main API families are mounted under `/api/auth`, `/api/batches`, `/api/recipes`,
 
 ## Repository history and provenance
 
-**Summary: Oyster360 is the work of a single author. The Git commit history
-does not accurately reflect how or when the code was written, and should not
-be relied on as a development record.**
+**Summary: Oyster360 is the work of a single author. The Git history that was
+shipped with this repository was fabricated, and has been removed rather than
+repaired. There is no commit history to read for chronology, and no date in this
+repository claims to be the date the work was done.**
 
 This section exists so that anyone auditing, forking, or evaluating this
-repository has an accurate picture. The code is real and works; the history
-around it is not trustworthy, and pretending otherwise would be worse than
-saying so.
+repository has an accurate picture. The code is real and works; the history that
+surrounded it was invented, and saying so is better than leaving it in place.
 
 ### What is verifiable
 
+The fabricated history described here has been removed and replaced with a
+single import commit. Every item below was recorded, with hashes, in
+[docs/history_provenance_evidence.md](docs/history_provenance_evidence.md)
+*before* the history was replaced and before the `v0.x` tags were deleted, so
+each claim is still checkable against a document rather than against refs that no
+longer exist.
+
 - The GitHub repository was created on **2026-07-07**.
-- The commit graph contains **four unrelated root (parentless) commits**, which
+- The commit graph contained **four unrelated root (parentless) commits**, which
   is not possible in a single continuous project history.
-- Two pairs of those roots have **byte-identical file trees** (identical Git
-  tree hashes) but different authors and dates more than seven months apart.
-- The earliest root commit is authored "Priya Nair", dated **2025-01-14** —
+- Two pairs of those roots had **byte-identical file trees** (identical Git tree
+  hashes) but different authors and dates more than seven months apart.
+- The earliest root commit was authored "Priya Nair", dated **2025-01-14** —
   roughly eighteen months *before* the repository existed.
-- Another root commit is authored `Your Name <youremail@example.com>` with the
+- Another root commit was authored `Your Name <youremail@example.com>` with the
   message **"copied from my gitlab"**, which is the most plausible account of
   where the codebase actually came from.
-- 98 commits dated before 2026-04-08 occur at only **three distinct times of
+- 98 commits dated before 2026-04-08 occurred at only **three distinct times of
   day** (09:00, 12:00, 15:00), never on a weekend, with author and committer
   timestamps identical to the second and gaps of only 3–6 days.
-- Five commits share the **exact same timestamp** (2026-08-24 04:12:50) under
+- Five commits shared the **exact same timestamp** (2026-08-24 04:12:50) under
   five different author identities.
-- Twelve author identities in the history — Priya Nair, Marcus Lee, Sofia
-  Ramirez, Daniel Cho, Elena Vasquez, James Wright, Aisha Rahman, Thomas
-  Okonkwo, Maya Chen and variants — have **no GitHub accounts** and never
-  contributed. They were previously listed in `AUTHORS.md` and
-  `pyproject.toml`; those claims have been removed.
+- Ten author identities — Priya Nair, Marcus Lee, Sofia Ramirez, Daniel Cho,
+  Elena Vasquez, James Wright, Aisha Rahman, Thomas Okonkwo, Maya Chen and `Your
+  Name` — had **no GitHub accounts** and never contributed. They were previously
+  listed in `AUTHORS.md` and `pyproject.toml`; those listings have been removed.
+  They are listed in [ATTRIBUTION.md](ATTRIBUTION.md) as names that must not be
+  credited.
+- The release tags never formed a chronology. `v0.7.0`, `v0.8.0` and `v0.9.0`
+  pointed at commits dated **2026-06-19**, **2026-06-15** and **2026-04-24** —
+  before the repository was created — while `v0.1.0` pointed at a commit dated
+  **2026-08-21**, later than every `v0.9.0` target. The tagger timestamps of
+  `v0.6.0` and `v0.7.0` were **earlier than the commits they tagged**, which a
+  tag created in normal use cannot be.
+- **The tags `v0.1.0` through `v0.9.0` have been deleted** as fabricated release
+  markers. The tag objects, their taggers and their targets are recorded by hash
+  in the evidence document.
+- The published `v1.0.0` release described itself as the "first stable tag on the
+  **rewritten maintenance history**". That phrasing has been replaced.
+- `CHANGELOG.md` previously carried a dated release timeline covering `0.1.0`
+  (2025-08-16) through `0.9.0` (2026-07-18). Those dates have been removed and
+  the `0.x` headings now read `date unrecorded`.
+- **213 of the 329 commits** carried metadata that cannot be true: a fabricated
+  author, a date before the repository existed, or both. No commit had a
+  fabricated-free ancestry, so there was no honest portion of the history to
+  preserve.
 
 ### What this means
 
@@ -774,9 +800,39 @@ automated tooling (an AI coding agent, Dependabot, and GitHub Actions). Any
 metric derived from contributor count, commit cadence, or project age will be
 misleading for this repository.
 
-The commit timestamps have deliberately **not** been rewritten. Rewriting them
-would replace one provenance problem with another and destroy the evidence
-above. The history is left as-is and documented instead.
+**The rule this repository follows is that nothing is written that is not
+true.** Where a fact is unknowable it is recorded as unknown, not filled in.
+
+Applied to the history, that rule has a consequence worth stating plainly, because
+it is the reason the history was replaced instead of repaired:
+
+- **Git requires an author and a date on every commit.** There is no way to
+  record "author unknown" or "date unknown".
+- **The dates of the original work are not recoverable.** The code arrived as a
+  copy from a private GitLab and its real chronology was never captured here.
+  Guessing it, or moving the fabricated dates to a marker that looks plausible,
+  would write a new set of invented values into the repository — the same fault
+  being removed, with better cover.
+- **So the fabrication was deleted rather than rewritten.** `main` is now a
+  single import commit whose tree is byte-identical to the tree that was there
+  before, authored by the repository's owner, dated the moment it was created,
+  with a message that states what happened. Every field in it is true. What was
+  given up is the per-commit history and the dates — which were never reliable,
+  and cannot be made so.
+- **The attribution record is written down instead.** [ATTRIBUTION.md](ATTRIBUTION.md)
+  states who wrote the code, names the identities that must never be credited,
+  and says explicitly that no date or split of work between individuals can be
+  established. The per-commit evidence is preserved in the evidence document and
+  in an off-repository backup of the old history.
+
+Deleting a ref or a commit removes the easiest way to inspect it, so the evidence
+was captured first: every identity, address, count, root hash, timestamp
+collision and tag object is recorded in
+[docs/history_provenance_evidence.md](docs/history_provenance_evidence.md).
+
+The tested procedure for applying the same treatment to any remaining history,
+including its costs and the options it rejects, is in
+[docs/history_rewrite.md](docs/history_rewrite.md).
 
 ### What is trustworthy
 
@@ -802,6 +858,9 @@ coverage gate, and dependency-consistency checks from a clean checkout. See
 - [Product Overview](docs/PRODUCT_OVERVIEW.md)
 - [User Guide](docs/USER_GUIDE.md)
 - [Roadmap Status](docs/ROADMAP_STATUS.md)
+- [Attribution](ATTRIBUTION.md)
+- [History provenance: evidence record](docs/history_provenance_evidence.md)
+- [Rewriting the repository history](docs/history_rewrite.md)
 
 ## Reproducible Dependencies
 
