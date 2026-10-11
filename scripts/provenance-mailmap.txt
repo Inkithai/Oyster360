@@ -1,21 +1,34 @@
-# Mailmap for scripts/rewrite_history.sh
+# Mailmap for scripts/rewrite_history.sh --mailmap
 #
-# Maps fabricated author identities onto the person who actually wrote the
-# code. Read it before you run the script: this file decides what the rewritten
-# history will claim, and every line is a judgement call, not a fact.
+# THIS IS NOT THE RECOMMENDED APPROACH.
+#
+# Use it only if keeping the commit graph matters more to you than keeping the
+# metadata true. Two problems, and the script prints both before it runs:
+#
+#   1. It attributes 181 commits to the repository owner on inference. The
+#      inference is defensible — the code came from the owner's private GitLab
+#      ("copied from my gitlab"), the other names have no GitHub accounts and
+#      never contributed — but it is still an attribution that cannot be
+#      checked, commit by commit, against anything. That is the same class of
+#      problem as the fabrication being removed, merely pointing at someone who
+#      exists.
+#   2. It leaves every fabricated timestamp in place. After it runs, the
+#      history still contains commits dated before the repository existed.
+#
+# scripts/rewrite_history.sh --squash-import has neither problem: it writes
+# nothing that is not true, at the cost of the per-commit history. See
+# docs/history_rewrite.md.
+#
+# If you use this file, read every line. It decides what the rewritten history
+# will claim, and every line is a judgement call, not a fact.
 #
 # Syntax (git mailmap):
 #   Proper Name <proper@email>  Commit Name <commit@email>
 #
-# The mapping below attributes the work of twelve identities that never existed
-# to the repository owner. That is an inference, and a defensible one: the code
-# came from the owner's private GitLab ("copied from my gitlab"), the identities
-# have no GitHub accounts and never contributed, and the alternative — leaving
-# 55% of the history attributed to fictional people — is worse. It is still an
-# inference. If you would rather record those commits as unattributed, replace
-# the target address on every line below with a marker such as
-#   Unattributed <unattributed@invalid>
-# and say so in the README. Do not leave this file unexamined.
+# If you would rather record those commits as unattributed than attribute them
+# to the owner, replace the target address on every line below with a marker
+# such as Unattributed <unattributed@invalid> — that is honest and needs no
+# guesswork.
 
 # --- repository owner: one canonical form -------------------------------------
 Inkithai <108919130+Inkithai@users.noreply.github.com> <108919130+Inkithai@users.noreply.github.com>

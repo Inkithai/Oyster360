@@ -10,8 +10,9 @@ and the GitHub API against `main` at the commit that introduced this file. The
 repository was created on **2026-07-07**.
 
 Short version: **181 of the 329 commits on `main` (55%) were authored by
-identities that do not exist**, and the release tags describe a timeline that
-never happened.
+identities that do not exist**, and **213 of the 329 carry metadata that cannot
+be true** — a fabricated author, a date before the repository existed, or both.
+The release tags described a timeline that never happened.
 
 ## Fabricated author identities
 
@@ -158,3 +159,24 @@ The `v0.1.0`–`v0.5.0` targets are reachable only from the stale branch
 `arena/01a02e8a-oyster360`, not from `main`. If that branch is ever deleted and
 the repository is garbage-collected, those five commits — and the tag objects
 that pointed at them — are gone, and this table becomes the only record.
+
+## Where this record went
+
+The history described above was removed and replaced with a single import commit
+(see [history_rewrite.md](history_rewrite.md)). The commit objects, the root
+commits and the `v0.x` tag objects no longer exist in the repository, so the
+hashes and tables on this page are no longer verifiable from a fresh clone. They
+are verifiable against:
+
+- the repository owner's backup of the old history — a bundle of every ref plus a
+  `git log --format=raw` dump, written by `scripts/rewrite_history.sh` before it
+  changed anything;
+- the facts that survive in the working tree: the fabricated maintainer listings
+  in `AUTHORS.md` and `pyproject.toml` are removed, the fabricated `v0.x` tags
+  are deleted from the remote, and the `CHANGELOG` dates are gone;
+- the public record outside this repository, if any — forked copies and cached
+  contributor graphs still carry the fabricated names.
+
+If the owner's backup is lost, this page becomes an unverifiable assertion. That
+is the cost of removing rather than keeping the fabricated history, and it is why
+the backup exists and why it is named here.

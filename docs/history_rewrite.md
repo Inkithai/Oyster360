@@ -1,179 +1,249 @@
 # Rewriting the repository history
 
-This is the plan for removing fabricated authorship, duplicate roots and
-impossible dates from the Git history itself. It is written to be reviewed and
-executed deliberately, by hand, by the repository owner. **Nothing in this
-repository runs it automatically, and CI never touches history.**
+How to remove fabricated authorship and dates from the Git history.
 
-The evidence the rewrite is based on is in
-[history_provenance_evidence.md](history_provenance_evidence.md); the reasoning
-behind leaving the history documented rather than rewriting it is in the
-[README](../README.md#repository-history-and-provenance).
+**The governing rule: write nothing that is not true.** Every field this
+procedure writes — author, committer, date, message — is a fact. Where a fact is
+unknowable, it is left unknown and said to be unknown, rather than filled with
+something plausible.
 
-## Start here: decide whether to rewrite at all
+Evidence for everything below is in
+[history_provenance_evidence.md](history_provenance_evidence.md). The reasoning
+is in the [README](../README.md#repository-history-and-provenance).
 
-Every rewrite trades one problem for another. Read this before running anything.
+## The problem, stated precisely
 
-**What a rewrite can fix**
+Of **329 commits** on `main`, **213 carry metadata that cannot be true**:
 
-| Problem | After the rewrite |
-|---|---|
-| 181 of 329 commits on `main` attributed to ten people who never existed | Every commit attributed to a real identity, or to a clearly-labelled marker |
-| Four unrelated root commits, in two byte-identical pairs | Duplicate roots collapsed; content unchanged, because the trees are identical |
-| Commits dated before the repository existed | Impossible dates removed or moved to a documented marker |
-| Tags whose tagger timestamp precedes the commit they point at | Tags recreated on rewritten commits with honest dates |
+| Category | Commits | What is wrong |
+|---|---|---|
+| Fabricated author + date before the repository existed | 146 | Name never existed; date predates repo creation |
+| Real author + date before the repository existed | 30 | Owner's name on a date that cannot be real |
+| Fabricated author + plausible date | 34 | Name never existed |
+| Real author + plausible date | 116 | Nothing wrong |
+| Timestamps pinned to 09:00:00 / 12:00:00 / 15:00:00 | 3 | Constructed, not recorded |
 
-**What a rewrite cannot fix**
+The four root commits, in two byte-identical pairs, are part of the same
+problem.
 
-- **It cannot recover the true dates.** The code was copied into this
-  repository from a private GitLab. The real authorship dates of those 181
-  commits were never captured here, and nothing in the repository reconstructs
-  them. Clamping a 2025-01-14 date to a 2026-07-07 marker does not make it true;
-  it swaps a fabricated date for a different fabricated date that happens not to
-  look wrong. `--normalize-dates` does exactly that, which is why it is opt-in
-  and why it prints a warning.
-- **It cannot make the history verifiable.** Right now the README's claims can be
-  checked by anyone with a clone: the hashes, tree collisions and timestamps are
-  all still there. After a rewrite they are not, and the old hashes in
-  [history_provenance_evidence.md](history_provenance_evidence.md) stop resolving
-  from this repository. The disclosure becomes an assertion about history that no
-  longer exists in the repository — which is a weaker position than the current
-  one, not a stronger one.
-- **It cannot un-publish what was published.** Forks, clones and the contributor
-  graph are outside the owner's control.
+**No commit on `main` has a fabricated-free ancestry.** Every one of the 329
+descends from a commit with a fabricated author or an impossible date. There is
+therefore no honest portion of the history to preserve — the corruption is at the
+root, and anything built on it inherits it.
 
-The honest summary: a rewrite makes the repository *tidier*, not *more truthful*.
-If the goal is that no reader is misled, the current approach — keep the
-fabricated history, document it precisely — already achieves that, and achieves
-it verifiably. If the goal is that the repository no longer carries 181 false
-attributions, a rewrite is the only way to get there, and the evidence record
-becomes the substitute for the history it replaces.
+## The constraint that decides everything
+
+Git requires an author and a date on every commit. There is no "author unknown"
+and no "date unknown". So for a commit that cannot be honestly attributed, there
+are exactly three options:
+
+1. **Write a fabricated name and date.** That is what happened, and it is what
+   we are trying to remove.
+2. **Write a name and date that are true, but do not describe the original
+   work** — for example, dating the commit to when the rewrite ran. This claims
+   nothing false, but it stops being a record of the work.
+3. **Delete the commit.**
+
+Options 2 and 3 both discard the per-commit record. That is the price, and it is
+unavoidable. There is no option that keeps a granular, verifiable, per-commit
+history, because the granularity was never recorded honestly in the first place.
+
+## Approach A — `--squash-import` (recommended)
+
+Replaces the history with one commit holding the current source tree.
+
+```bash
+scripts/rewrite_history.sh --squash-import          # dry run
+scripts/rewrite_history.sh --squash-import --apply
+```
+
+The replacement commit:
+
+- **Author and committer** — the real owner, a real GitHub account.
+- **Date** — the moment the commit was created. True by construction.
+- **Message** — says what happened, how many commits were removed, and why.
+- **Tree** — byte-identical to the tree that was there before. Verified before
+  the replacement is written; the script aborts if the hash differs.
+
+Every field in the result is true. Nothing is inferred, reconstructed, or
+guessed. This is the only approach that satisfies the rule at the top of this
+document.
+
+What you lose: per-commit history, `git blame` across time, `git bisect`,
+`git log`, and the ability to see how the code evolved.
+
+What you keep: the entire codebase, byte for byte, plus an honest record of where
+the metadata went and what it claimed.
+
+### What `--squash-import` is not
+
+It is not a "history rewrite" in the sense of preserving commits. It is a
+deliberate deletion of unusable metadata, with the content carried forward
+exactly. The script says so in the commit message it generates.
+
+### The message is a judgement call, and it is editable
+
+The generated message states the real numbers (commits removed, how many carried
+impossible metadata) and points at the evidence document. If you want a shorter
+message, edit the heredoc in the script before running it. What the message must
+not do is claim the commit represents anything other than what it is.
+
+## Approach B — `--mailmap` (not recommended)
+
+Rewrites the author identity on every commit in place and keeps all of them.
+
+```bash
+scripts/rewrite_history.sh --mailmap                        # dry run
+scripts/rewrite_history.sh --mailmap --apply --collapse-duplicate-roots
+```
+
+This preserves the commit graph. It has two problems that make it the weaker
+choice:
+
+1. **It attributes 181 commits to the repository owner on inference.** The
+   inference is reasonable — the code came from the owner's GitLab and the other
+   names do not exist — but it is still writing an attribution that cannot be
+   checked, per commit, against anything. That is the same class of problem as
+   the fabrication being removed, just in a more defensible direction.
+2. **It leaves every fabricated timestamp in place.** Untouched, the history
+   still contains commits dated before the repository existed.
+
+The identity mapping is in [`scripts/provenance-mailmap.txt`](provenance-mailmap.txt).
+Read it before running. If you prefer that those commits be explicitly
+unattributed rather than attributed to the owner, change the target address on
+each line to a marker such as `Unattributed <unattributed@invalid>` — that is
+honest, and it needs no guesswork.
+
+## Approach C — clamping the dates (removed)
+
+An earlier version of this script moved impossible dates forward to a marker
+constant. It has been deleted.
+
+It is worth explaining why, because it looks reasonable. Clamping a commit dated
+2025-01-14 to the repository-creation marker produces a date that is not false:
+the commit really was created after the repository existed. But it is not the
+date of the work either, and there is no way for a later reader to tell the
+difference. It replaces an impossible date with a plausible-looking wrong one,
+which is a strictly worse failure mode: an impossible date announces itself,
+and a plausible one does not.
+
+If the dates are unknowable, the honest options are "no commit history" or
+"dates that say they are not the original dates". Not a marker dressed up as a
+timestamp.
 
 ## Blast radius
 
-Force-pushing a rewritten `main` is a breaking change for everyone who has ever
-cloned this repository:
+Force-pushing a rewritten `main` breaks everyone who has ever cloned this
+repository.
 
 - **Every commit hash changes.** All of them.
-- **36 remote branches** diverge. The stale `arena/*` session branches and the
-  `dependabot/*` branches stop sharing ancestry with `main`; most can be deleted.
-- **Every open pull request** must be rebased or recreated. GitHub cannot merge a
-  PR whose base has been rewritten.
-- **All existing clones** must be re-cloned. A `git pull` will merge the old and
-  new histories and reintroduce everything the rewrite removed.
-- **The contributor graph** rebuilds over time and may cache the old attribution.
-- **GitHub Releases** attached to rewritten tags need updating by hand.
-- **Anything referencing a commit SHA** — issue comments, CI logs, the evidence
-  document, blog posts — points at an object that may no longer exist.
-
-## Prerequisites
-
-- `git-filter-repo` (the script checks for it and explains how to install it).
-- A full, non-shallow clone. The script refuses to run in a shallow clone,
-  because rewriting one produces a truncated history.
-- A clean working tree.
-- Time to tell every contributor to re-clone.
+- **Every open pull request** must be rebased or recreated. GitHub cannot merge
+  a PR whose base was rewritten.
+- **All clones must be re-cloned.** A plain `git pull` will merge the old
+  history with the new one and reintroduce everything that was removed — this is
+  the most common way a history cleanup silently fails.
+- **36 remote branches diverge.** The stale `arena/*` session branches and the
+  `dependabot/*` branches carry the old history.
+- **Remote tags and GitHub Releases** point at commits that will not exist. See
+  "Tags" below.
+- **The contributor graph** rebuilds over time and may cache the old names.
+- **Anything citing a commit SHA** — issues, logs, the evidence document —
+  points at an object that may be gone.
 
 ## Runbook
 
-Run all of this yourself. The script never pushes and never touches a remote.
-
 ```bash
-# 1. Fresh clone, so nothing you care about is in the working tree
+# 1. Fresh clone, so nothing you care about is in your working tree
 git clone https://github.com/Inkithai/Oyster360.git history-rewrite
 cd history-rewrite
 
-# 2. Read the identity mapping and change anything you disagree with
-$EDITOR scripts/provenance-mailmap.txt
+# 2. Dry run
+scripts/rewrite_history.sh --squash-import
 
-# 3. Dry run: reports what would change, touches nothing
-scripts/rewrite_history.sh --collapse-duplicate-roots
+# 3. Apply to the local clone
+scripts/rewrite_history.sh --squash-import --apply
 
-# 4. Rewrite the local clone
-scripts/rewrite_history.sh --apply --collapse-duplicate-roots
-
-#    Add --normalize-dates only if you have decided that a marker date is
-#    better than an impossible date. It is not more truthful. Your call.
+# 4. Look at the result before publishing anything
+git log --stat -1
+git rev-parse main^{tree}      # must equal the tree the dry run printed
 ```
-
-The script writes three things to `$TMPDIR/oyster360-history-backup-<stamp>/`
-before it changes a single object:
-
-| File | Why it matters |
-|---|---|
-| `all-refs.bundle` | Full backup. `git clone` it to get the old repository back. |
-| `refs.txt` | Every ref and the object it pointed at. |
-| `full-history-raw.txt` | `git log --format=raw`: the author, committer and date lines as they were. **This is the evidence record once the objects are gone. Keep it.** |
 
 ### What the run was verified to do
 
-The pipeline was tested end to end against a copy of this repository before
-being committed here. Results, so you know what to expect:
+Executed end to end against a copy of this repository before being committed here:
 
 ```text
-before:  329 commits on main, 4 roots on main, 233 commits by fabricated
-         identities across all refs
-after:   327 commits on main, 2 roots on main, 0 commits by fabricated identities
+before:  329 commits on main, 4 roots on main, 213 commits with impossible metadata
 
-main tree hash before:  d38494ca8e20f36a4bd765b43808d0a9ad8824c7
-main tree hash after:   d38494ca8e20f36a4bd765b43808d0a9ad8824c7   <- identical
+after:   1 commit on main, 1 root, 0 fabricated identities
+
+main tree before:  d38494ca8e20f36a4bd765b43808d0a9ad8824c7
+main tree after:   d38494ca8e20f36a4bd765b43808d0a9ad8824c7   <- identical
+
+fabricated identities on main:  0
+commits on main:                1
 ```
 
-The commit count drops by two because the two duplicate roots are merged; the
-tree hash is unchanged, which is the proof that no file content was altered by
-the rewrite. Check that hash yourself after step 4 — if it differs, stop and
-restore from the bundle.
+The unchanged tree hash is the proof that no file content was altered.
 
-## Roots: what happens to them
+### The backup
 
-The history contains three commits with the tree `3dfc1663` and three with the
-tree `52d941c1`, under different authors and dates. Identical tree means
-identical files, so the duplicates are the same commit recorded more than once.
+Written to `$TMPDIR/oyster360-history-backup-<stamp>/` before a single object is
+changed:
 
-`--collapse-duplicate-roots` groups roots by tree, keeps the member that is an
-ancestor of `main` (falling back to the most recent), and replaces the others
-with it via `git replace`, made permanent by a second `filter-repo` pass.
+| File | Why |
+|---|---|
+| `all-refs.bundle` | Full backup. `git clone` it to restore the old repository exactly. |
+| `refs.txt` | Every ref and the object it pointed at. |
+| `full-history-raw.txt` | `git log --format=raw` — the author, committer and date lines as they were. **After the rewrite this is the only copy of the metadata.** Keep it, or `ATTRIBUTION.md` becomes an unverifiable assertion. |
 
-After that, **two roots remain**, because the repository genuinely descends from
-two different starting points: a project skeleton ("chore: initialize project
-repository") and a code import ("copied from my gitlab"). Collapsing those two
-into one would mean inventing an order for them. The rewrite does not do that,
-and neither should you without a reason you can state.
+## Tags and releases
 
-## Publishing, after you have checked the result
+`v1.0.0` and `v1.1.0` point at commits that will no longer exist after the
+rewrite. Re-tagging them onto the import commit would assert that a release
+happened on that commit and that date, which is false. **Delete them and start
+release history at the next genuine release:**
 
 ```bash
-git remote add origin https://github.com/Inkithai/Oyster360.git
-git bundle verify "$BACKUP_DIR/all-refs.bundle"   # backup is readable
-git log --oneline -20                             # read before you push
-
-git push --force-with-lease origin main
-git push origin --delete v0.1.0 v0.2.0 v0.3.0 v0.4.0 v0.5.0 v0.6.0 v0.7.0 v0.8.0 v0.9.0
+git push origin --delete v1.0.0 v1.1.0
 ```
 
-Then, in order:
+While you are there: a first release for the rewritten repository is only honest
+if the tag is created at the time and on the commit it actually represents.
 
-1. Recreate `v1.0.0` and `v1.1.0` on their rewritten commits and update the
-   `v1.0.0` GitHub Release. Their old tag objects no longer exist.
-2. Delete the stale `arena/*` and `dependabot/*` branches. Their commits are no
-   longer ancestors of the rewritten `main`.
-3. Rewrite the README provenance section: after a rewrite, the four-root and
-   five-identical-timestamp findings no longer apply, and the disclosure has to
-   say so rather than continue to assert them. You are not removing the
-   disclosure — you are updating it to describe the history that now exists,
-   including that it was rewritten.
-4. Say plainly, somewhere permanent, that the history was rewritten on a given
-   date and why. A rewritten history with no note is worse than the fabricated
-   one, because nothing in it looks wrong.
-5. Tell contributors to re-clone, and delete the evidence backup or move it
-   somewhere durable. If you delete it, the disclosure becomes unverifiable.
+## After publishing
+
+1. Delete the stale `arena/*` and `dependabot/*` branches. They carry the old
+   history and will reintroduce it if merged.
+2. Update the README provenance section. It describes a history that will no
+   longer exist. Replace it with the truth: **the history was removed on
+   <date> because it was fabricated, the content was preserved byte-for-byte,
+   and the evidence is in `docs/history_provenance_evidence.md`.**
+3. Tell contributors to re-clone. Anyone who pulls instead of re-cloning will
+   merge the old history back in.
+4. Archive the backup somewhere durable. If it is lost, the claim that the
+   history was fabricated cannot be checked.
 
 ## Rollback
 
-Before the force-push, rollback is total: `git clone <BACKUP_DIR>/all-refs.bundle`
-reconstructs the original repository, hashes and all.
+Before the force-push, rollback is total and exact:
 
-After the force-push, rollback means force-pushing the restore. Forks and
-clones that already pulled the rewritten history will then diverge again.
-Rewriting history twice is worse than rewriting it once, so decide before
-publishing rather than after.
+```bash
+git clone <BACKUP_DIR>/all-refs.bundle restored
+```
+
+The restored repository has the original hashes, the original authors, and the
+original dates — including the fabricated ones.
+
+After the force-push, rollback means force-pushing the restore and invalidating
+every clone that already pulled the new history. Decide before publishing, not
+after.
+
+## Why this document argues with itself
+
+It explains at length why Approach A is correct, then documents how to run
+Approach B, which it calls the weaker choice. That is deliberate. The choice
+between "no history" and "history with attributed-on-inference authors" is a
+values question about this project, not a technical one, and the repository
+owner is the person who gets to answer it. The job of this document is to make
+sure the answer is made knowingly, with the cost of each option stated.
