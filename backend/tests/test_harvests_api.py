@@ -1,10 +1,11 @@
-"""Tests for harvests API endpoints."""
-import pytest
-from app.models.batch import Batch, BatchStage
-from app.models.user import User
-from app.models.organization import Organization, OrganizationMember
-from app.core.security import get_password_hash, create_access_token
+"""Tests for harvests API endpoints including flush tracking and spoiled/unsold stock."""
 from datetime import datetime
+import pytest
+
+from app.core.security import create_access_token, get_password_hash
+from app.models.batch import Batch, BatchStage
+from app.models.organization import Organization, OrganizationMember
+from app.models.user import User
 
 
 @pytest.fixture
@@ -61,6 +62,40 @@ def test_record_harvest_success(client, harvest_fixtures, db_session):
     assert batch.current_stage == BatchStage.COMPLETED
 
 
+def test_record_multiple_flushes_and_list_harvests(client, harvest_fixtures, db_session):
+    headers = {"Authorization": f"Bearer {harvest_fixtures['token']}"}
+    res_f1 = client.post(
+        f"/api/batches/{harvest_fixtures['batch_id']}/harvest",
+        json={
+            "quantity_kg": 30.0,
+            "spoiled_kg": 2.0,
+            "unsold_kg": 3.0,
+            "flush_number": 1,
+            "quality_score": 94.0,
+            "selling_price": 600.0,
+            "complete_batch": False,
+        },
+        headers=headers,
+    )
+    assert res_f1.status_code == 200
+    assert res_f1.json()["flush_number"] == 1
+    assert res_f1.json()["sellable_kg"] == 28.0
+    assert res_f1.json()["revenue"] == 16800.0
+
+    batch = db_session.get(Batch, harvest_fixtures["batch_id"])
+    assert batch.current_stage == BatchStage.HARVEST
+
+    all_harvests = client.get("/api/harvests", headers=headers)
+    assert all_harvests.status_code == 200
+    assert len(all_harvests.json()) == 1
+
+    batch_harvests = client.get(
+        f"/api/batches/{harvest_fixtures['batch_id']}/harvests", headers=headers
+    )
+    assert batch_harvests.status_code == 200
+    assert batch_harvests.json()[0]["flush_number"] == 1
+
+
 def test_record_harvest_cross_tenant_denied(client, harvest_fixtures):
     headers = {"Authorization": f"Bearer {harvest_fixtures['token']}"}
     response = client.post(
@@ -73,10 +108,17 @@ def test_record_harvest_cross_tenant_denied(client, harvest_fixtures):
 
 def test_record_harvest_validation(client, harvest_fixtures):
     headers = {"Authorization": f"Bearer {harvest_fixtures['token']}"}
-    # Zero quantity
     res1 = client.post(
         f"/api/batches/{harvest_fixtures['batch_id']}/harvest",
         json={"quantity_kg": 0.0, "quality_score": 90.0, "selling_price": 15.0},
         headers=headers,
     )
     assert res1.status_code == 422
+
+    # Spoiled + unsold exceeding total quantity
+    res2 = client.post(
+        f"/api/batches/{harvest_fixtures['batch_id']}/harvest",
+        json={"quantity_kg": 10.0, "spoiled_kg": 8.0, "unsold_kg": 5.0, "selling_price": 500.0},
+        headers=headers,
+    )
+    assert res2.status_code == 400

@@ -6,15 +6,14 @@ from sqlalchemy.orm import Session
 
 from app.models.batch import Batch, BatchStage
 from app.models.environment_log import EnvironmentLog
+from app.models.finance import FarmExpense
 from app.models.harvest import Harvest
 from app.models.recipe import Recipe
+from app.models.sales import HarvestSale
 from app.models.strain import Strain
 from app.models.yield_prediction import YieldPrediction
 from app.services.cache_service import cache
 
-# Agronomic reference values for oyster mushroom cultivation. Every constant is
-# only a fallback: as soon as a tenant records its own harvests, strain
-# metadata, or environment logs, those real values take over.
 BASE_YIELD_KG_PER_BAG = 0.75
 DEFAULT_BAG_COUNT = 500
 DEFAULT_CYCLE_DAYS = 28
@@ -37,11 +36,6 @@ class AnalyticsService:
     def _harvest_totals_by_batch(
         self, organization_id: int, strain_id: int = None
     ) -> Dict[int, float]:
-        """Total harvested kg per batch, tenant-scoped and optionally strain-scoped.
-
-        Real aggregation over the Harvest table so downstream metrics are
-        derived from recorded production data instead of pseudo-random values.
-        """
         query = (
             self.db.query(Harvest.batch_id, func.sum(Harvest.quantity_kg))
             .join(Batch, Harvest.batch_id == Batch.id)
@@ -56,12 +50,6 @@ class AnalyticsService:
         return {batch_id: float(total or 0) for batch_id, total in rows}
 
     def _environmental_factor(self, organization_id: int) -> Tuple[float, bool]:
-        """Score recent room conditions against the optimal oyster band.
-
-        Returns ``(factor, has_environment_data)`` where ``factor`` shrinks by
-        1% per degree Celsius and 0.5% per %RH outside the optimal range, and
-        stays clamped to a bounded corridor so it can never dominate history.
-        """
         logs = (
             self.db.query(EnvironmentLog)
             .filter(EnvironmentLog.organization_id == organization_id)
@@ -96,7 +84,6 @@ class AnalyticsService:
     def _confidence_score(
         self, historical_batch_count: int, has_environment_data: bool
     ) -> float:
-        """Confidence grows with the amount of real tenant data behind the estimate."""
         confidence = 55.0 + 4.0 * historical_batch_count
         confidence += 5.0 if has_environment_data else -5.0
         return round(max(MIN_CONFIDENCE, min(MAX_CONFIDENCE, confidence)), 1)
@@ -112,9 +99,7 @@ class AnalyticsService:
         return max(1, cycle_days)
 
     def predict_yield_for_batch(
-        self,
-        batch_id: int,
-        organization_id: int,
+        self, batch_id: int, organization_id: int
     ) -> Dict[str, Any]:
         batch = self.db.query(Batch).filter(
             Batch.id == batch_id,
@@ -124,9 +109,6 @@ class AnalyticsService:
             return {"error": "Batch not found"}
 
         strain = self.db.query(Strain).filter(Strain.id == batch.strain_id).first()
-
-        # Base the estimate on the tenant's own recorded production for this
-        # strain; fall back to per-bag agronomy only when no history exists.
         historical_totals = self._harvest_totals_by_batch(
             organization_id, batch.strain_id
         )
@@ -166,41 +148,64 @@ class AnalyticsService:
         }
 
     def get_dashboard_stats(self, organization_id: int) -> Dict[str, Any]:
-        """Return cached analytics scoped to one organization."""
         cache_key = self.cache.get_dashboard_cache_key(organization_id)
         cached_data = self.cache.get(cache_key)
         if cached_data:
             return cached_data
 
-        batches = self.db.query(Batch).filter(
-            Batch.organization_id == organization_id
-        )
+        batches = self.db.query(Batch).filter(Batch.organization_id == organization_id)
+        batch_rows = batches.all()
         active_batches = batches.filter(Batch.status == "active").count()
-        total_batches = batches.count()
-        completed_batches = batches.filter(
-            Batch.current_stage == BatchStage.COMPLETED
+        total_batches = len(batch_rows)
+        completed_batches = batches.filter(Batch.current_stage == BatchStage.COMPLETED).count()
+        upcoming_harvests = batches.filter(
+            Batch.current_stage.in_([BatchStage.FRUITING, BatchStage.HARVEST])
         ).count()
 
-        total_production = self.db.query(func.sum(Harvest.quantity_kg)).filter(
-            Harvest.organization_id == organization_id
-        ).scalar() or 0
-        success_rate = (
-            round((completed_batches / total_batches) * 100, 1)
-            if total_batches
-            else 0
+        total_production = float(
+            self.db.query(func.sum(Harvest.quantity_kg))
+            .filter(Harvest.organization_id == organization_id).scalar() or 0.0
         )
-        best_recipe = self.db.query(Recipe).filter(
-            Recipe.organization_id == organization_id
-        ).first()
+        total_expenses_lkr = float(
+            self.db.query(func.sum(FarmExpense.amount_lkr))
+            .filter(FarmExpense.organization_id == organization_id).scalar() or 0.0
+        )
+        sales_revenue_lkr = float(
+            self.db.query(func.sum(HarvestSale.total_amount_lkr))
+            .filter(HarvestSale.organization_id == organization_id).scalar() or 0.0
+        )
+        outstanding_payments_lkr = float(
+            self.db.query(func.sum(HarvestSale.balance_due_lkr))
+            .filter(HarvestSale.organization_id == organization_id).scalar() or 0.0
+        )
+        harvests_list = self.db.query(Harvest).filter(
+            Harvest.organization_id == organization_id
+        ).all()
+        harvest_rev = sum(
+            float(h.quantity_kg or 0.0) * float(h.selling_price or 0.0) for h in harvests_list
+        )
+        total_revenue_lkr = round(sales_revenue_lkr if sales_revenue_lkr > 0 else harvest_rev, 2)
+        estimated_profit_lkr = round(total_revenue_lkr - total_expenses_lkr, 2)
+        total_bags = sum(int(b.bags_prepared or 500) for b in batch_rows)
+        average_yield = round((total_production * 1000.0) / total_bags, 1) if total_bags > 0 else 0.0
+        success_rate = round((completed_batches / total_batches) * 100, 1) if total_batches else 0
+        best_recipe = self.db.query(Recipe).filter(Recipe.organization_id == organization_id).first()
 
         result = {
             "active_batches": active_batches,
+            "total_batches": total_batches,
+            "upcoming_harvests": upcoming_harvests,
             "total_production_kg": round(total_production, 1),
+            "average_yield": average_yield,
             "success_rate": success_rate,
             "contamination_rate": 8.5,
             "average_cultivation_days": 28,
             "best_strain": "N/A",
             "best_recipe": best_recipe.name if best_recipe else "N/A",
+            "total_expenses_lkr": round(total_expenses_lkr, 2),
+            "total_revenue_lkr": total_revenue_lkr,
+            "estimated_profit_lkr": estimated_profit_lkr,
+            "outstanding_payments_lkr": round(outstanding_payments_lkr, 2),
         }
         self.cache.set(cache_key, result, ttl=300)
         return result
@@ -229,7 +234,6 @@ class AnalyticsService:
         }
 
     def get_strain_performance(self, organization_id: int) -> List[Dict]:
-        """Per-strain metrics aggregated from real batches and harvests."""
         batches = self.db.query(Batch).filter(
             Batch.organization_id == organization_id
         ).all()
@@ -242,16 +246,16 @@ class AnalyticsService:
         ).order_by(Strain.name).all()
         harvest_totals = self._harvest_totals_by_batch(organization_id)
 
-        result = []
-        for strain in strains:
-            strain_batches = [b for b in batches if b.strain_id == strain.id]
-            result.append(
-                self._performance_row(strain.name, strain_batches, harvest_totals)
+        return [
+            self._performance_row(
+                strain.name,
+                [b for b in batches if b.strain_id == strain.id],
+                harvest_totals,
             )
-        return result
+            for strain in strains
+        ]
 
     def get_recipe_performance(self, organization_id: int) -> List[Dict]:
-        """Per-recipe metrics aggregated from real batches and harvests."""
         recipes = self.db.query(Recipe).filter(
             Recipe.organization_id == organization_id
         ).order_by(Recipe.name).all()
@@ -275,7 +279,6 @@ class AnalyticsService:
     def _performance_row(
         name: str, batches: List[Batch], harvest_totals: Dict[int, float]
     ) -> Dict:
-        """Average harvested kg and completion rate for one group of batches."""
         harvested_batches = [
             harvest_totals[b.id] for b in batches if b.id in harvest_totals
         ]
