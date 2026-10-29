@@ -19,6 +19,8 @@ from .harvest import Harvest
 from .harvest_grade import HarvestGrade
 from .inventory import InventoryItem, InventoryTransaction
 from .purchase import Supplier, PurchaseOrder, PurchaseOrderItem
+from .finance import ExpenseCategory, FarmExpense
+from .sales import Buyer, BuyerType, HarvestSale, PaymentStatus
 from .subscription import Subscription
 from .notification import Notification
 from .image_inspection import ImageInspection, InspectionFinding

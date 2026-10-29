@@ -858,6 +858,7 @@ coverage gate, and dependency-consistency checks from a clean checkout. See
 - [Product Overview](docs/PRODUCT_OVERVIEW.md)
 - [User Guide](docs/USER_GUIDE.md)
 - [Roadmap Status](docs/ROADMAP_STATUS.md)
+- [Pending Tasks](docs/PENDING_TASKS.md)
 - [Attribution](ATTRIBUTION.md)
 - [History provenance: evidence record](docs/history_provenance_evidence.md)
 - [Rewriting the repository history](docs/history_rewrite.md)

@@ -22,3 +22,34 @@ from .saas_analytics import router as saas_analytics_router
 from .mfa import router as mfa_router
 from .compliance import router as compliance_router
 from .webhooks import router as webhooks_router
+from .finance import router as finance_router
+from .sales import router as sales_router
+
+__all__ = [
+    "auth_router",
+    "batches_router",
+    "recipes_router",
+    "growth_logs_router",
+    "harvests_router",
+    "environment_router",
+    "analytics_router",
+    "strains_router",
+    "rooms_router",
+    "ai_router",
+    "inspections_router",
+    "assistant_router",
+    "inventory_router",
+    "purchases_router",
+    "harvest_grades_router",
+    "ai_assistant_router",
+    "organizations_router",
+    "billing_router",
+    "notifications_router",
+    "admin_router",
+    "saas_analytics_router",
+    "mfa_router",
+    "compliance_router",
+    "webhooks_router",
+    "finance_router",
+    "sales_router",
+]

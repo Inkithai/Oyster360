@@ -29,6 +29,7 @@ from app.api import (
     billing_router,
     compliance_router,
     environment_router,
+    finance_router,
     growth_logs_router,
     harvest_grades_router,
     harvests_router,
@@ -41,6 +42,7 @@ from app.api import (
     recipes_router,
     rooms_router,
     saas_analytics_router,
+    sales_router,
     strains_router,
     webhooks_router,
 )
@@ -168,6 +170,8 @@ app.include_router(saas_analytics_router, prefix="/api/saas-analytics", tags=["S
 app.include_router(mfa_router, prefix="/api/mfa", tags=["MFA"])
 app.include_router(compliance_router, prefix="/api/compliance", tags=["Compliance"])
 app.include_router(webhooks_router, prefix="/api/webhooks", tags=["Webhooks"])
+app.include_router(finance_router, prefix="/api/finance", tags=["Finance & Profit (LKR)"])
+app.include_router(sales_router, prefix="/api/sales", tags=["Harvest Sales & Buyers"])
 
 
 # ---------------------------------------------------------------------------

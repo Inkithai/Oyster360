@@ -1,4 +1,4 @@
-from typing import List
+from typing import Any, Dict, List
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
@@ -8,9 +8,18 @@ from app.core.tenant import get_current_organization
 from app.database.database import get_db
 from app.models.batch import Batch
 from app.models.user import User
-from app.schemas.batch import BatchCreate, BatchResponse, BatchStageUpdate
-from app.services.batch_service import create_batch as create_tenant_batch
-from app.services.batch_service import update_batch_stage
+from app.schemas.batch import (
+    BatchBagUpdate,
+    BatchCreate,
+    BatchResponse,
+    BatchStageUpdate,
+)
+from app.services.batch_service import (
+    create_batch as create_tenant_batch,
+    get_daily_tasks,
+    update_batch_bags,
+    update_batch_stage,
+)
 
 router = APIRouter()
 
@@ -22,6 +31,15 @@ def get_batches(
     organization_id: int = Depends(get_current_organization),
 ):
     return db.query(Batch).filter(Batch.organization_id == organization_id).all()
+
+
+@router.get("/daily-tasks", response_model=List[Dict[str, Any]])
+def list_daily_tasks(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(worker_access),
+    organization_id: int = Depends(get_current_organization),
+):
+    return get_daily_tasks(db, organization_id)
 
 
 @router.get("/{batch_id}", response_model=BatchResponse)
@@ -60,5 +78,21 @@ def update_stage(
 ):
     try:
         return update_batch_stage(db, batch_id, update.stage.value, organization_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.patch("/{batch_id}/bags", response_model=BatchResponse)
+def update_bags(
+    batch_id: int,
+    update: BatchBagUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(worker_access),
+    organization_id: int = Depends(get_current_organization),
+):
+    try:
+        return update_batch_bags(
+            db, batch_id, update.model_dump(exclude_unset=True), organization_id
+        )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc

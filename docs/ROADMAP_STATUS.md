@@ -1,5 +1,12 @@
 # ✅ Oyster360 Roadmap Status - Clear Breakdown
 
+> **Superseded in part:** the product is now positioned as a **Sri Lankan mushroom-grower MVP**.
+> Phase 1 (grow-bag & flush tracking, LKR cost/profit calculator, buyer & sales management, trilingual
+> mobile-first UI) is delivered and covered by the CI gates — see
+> [Product Overview](PRODUCT_OVERVIEW.md) and [Pending Tasks](PENDING_TASKS.md).
+> The tables below describe the earlier enterprise build-out; several of those capabilities are now
+> **deliberately deferred** and listed in section 4 of `docs/PENDING_TASKS.md`.
+
 ---
 
 ## **COMPLETED ✅**
